@@ -51,7 +51,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="h-16 bg-[#FFFFFF] border-b border-[#E9E2D8] flex items-center justify-between px-4 lg:px-6 sticky top-0 z-20 shadow-xs">
+      <header className="h-16 bg-[#FFFFFF] border-b border-[#E9E2D8] flex items-center justify-between px-4 lg:px-6 sticky top-0 z-20 shadow-xs shrink-0">
         {/* Left: Breadcrumbs navigation */}
         <div className="flex items-center gap-2 text-xs sm:text-sm">
           <span className="text-[#918477] font-medium">{breadcrumbs[0]}</span>

@@ -103,15 +103,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   return (
     <aside
       className={cn(
-        "bg-[#F0EBE2] border-r border-[#E9E2D8] flex flex-col transition-all duration-300 select-none z-30",
+        "bg-[#F0EBE2] border-r border-[#E9E2D8] flex flex-col transition-all duration-300 select-none z-30 shrink-0 sticky top-0 h-screen relative",
         collapsed ? "w-16" : "w-64"
       )}
     >
+      {/* Floating expand button on right border when collapsed */}
+      {collapsed && (
+        <button
+          onClick={onToggle}
+          className="absolute -right-3 top-5 w-6 h-6 rounded-full bg-white border border-[#E9E2D8] shadow-xs flex items-center justify-center text-[#765440] hover:text-[#30251F] hover:bg-[#F8F6F1] hover:scale-110 transition-all z-40"
+          title="Expand sidebar"
+        >
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      )}
+
       {/* Brand logo section */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-[#E9E2D8]/80 bg-[#EFE9E0]">
-        <Link href="/" className="flex items-center gap-2.5 overflow-hidden group">
-          {/* Minimal Geometric Logo */}
-          <div className="w-8 h-8 rounded-xl bg-[#593A2C] text-[#F8F6F1] flex items-center justify-center shrink-0 shadow-sm group-hover:bg-[#472E23] transition-colors">
+      <div
+        className={cn(
+          "h-16 flex items-center border-b border-[#E9E2D8]/80 bg-[#EFE9E0] shrink-0",
+          collapsed ? "justify-center px-2" : "justify-between px-4"
+        )}
+      >
+        <Link
+          href="/"
+          className={cn(
+            "flex items-center gap-2.5 overflow-hidden group/logo shrink-0",
+            collapsed && "justify-center"
+          )}
+          title="Stockwell Dashboard"
+        >
+          {/* Minimal Geometric Logo - Always visible and centered in collapsed mode */}
+          <div className="w-8 h-8 rounded-xl bg-[#593A2C] text-[#F8F6F1] flex items-center justify-center shrink-0 shadow-sm group-hover/logo:bg-[#472E23] transition-colors">
             <div className="grid grid-cols-2 gap-0.5 p-1">
               <span className="w-2 h-2 rounded-[2px] bg-[#F8F6F1]"></span>
               <span className="w-2 h-2 rounded-[2px] bg-[#A78B73]"></span>
@@ -130,13 +153,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
             </div>
           )}
         </Link>
-        <button
-          onClick={onToggle}
-          className="p-1 rounded-lg text-[#918477] hover:text-[#30251F] hover:bg-[#E5DEC] transition-colors"
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
+        {!collapsed && (
+          <button
+            onClick={onToggle}
+            className="p-1 rounded-lg text-[#918477] hover:text-[#30251F] hover:bg-[#E5DEC] transition-colors"
+            title="Collapse sidebar"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Navigation Sections */}
@@ -161,7 +186,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                   href={item.href}
                   title={collapsed ? item.name : undefined}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-xl text-sm sm:text-base font-medium transition-all group",
+                    "flex items-center rounded-xl text-sm sm:text-base font-medium transition-all group",
+                    collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
                     isActive
                       ? "bg-[#E2D8CC] text-[#30251F] shadow-xs font-semibold"
                       : "text-[#765440] hover:text-[#30251F] hover:bg-[#EAE2D7]"
@@ -184,8 +210,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       </div>
 
       {/* Bottom Profile card */}
-      <div className="p-3 border-t border-[#E9E2D8] bg-[#EBE5DB]">
-        <div className="flex items-center gap-3">
+      <div className="p-3 border-t border-[#E9E2D8] bg-[#EBE5DB] shrink-0">
+        <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
           <div className="w-8 h-8 rounded-full bg-[#593A2C] text-[#F8F6F1] flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
             AM
           </div>

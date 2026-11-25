@@ -1,11 +1,37 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 import { Toaster } from "sonner";
 
+export const viewport: Viewport = {
+  themeColor: "#593A2C",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   title: "Stockwell — Premium Inventory Management SaaS",
   description: "Inventory, sales and purchasing — beautifully organized.",
+  applicationName: "Stockwell",
+  keywords: [
+    "inventory management",
+    "saas",
+    "sales orders",
+    "purchase orders",
+    "stock tracking",
+    "zoho inventory",
+    "b2b dashboard"
+  ],
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+  openGraph: {
+    title: "Stockwell — Premium Inventory Management SaaS",
+    description: "Inventory, sales and purchasing — beautifully organized.",
+    siteName: "Stockwell",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
