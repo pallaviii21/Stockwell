@@ -2,7 +2,9 @@
 
 import React from "react";
 import { Modal } from "./Modal";
+import { Button } from "./Button";
 import { AlertTriangle } from "lucide-react";
+import { APP_STRINGS } from "@/constants/strings";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -21,8 +23,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   title,
   message,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
+  confirmText = APP_STRINGS.COMMON.CONFIRM,
+  cancelText = APP_STRINGS.COMMON.CANCEL,
   isDestructive = true,
 }) => {
   return (
@@ -40,27 +42,19 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E9E2D8]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-[#593A2C] bg-[#F0EBE2] hover:bg-[#EAE4DC] rounded-xl transition-colors"
-          >
+          <Button variant="secondary" onClick={onClose} size="md">
             {cancelText}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant={isDestructive ? "destructive" : "primary"}
+            size="md"
             onClick={() => {
               onConfirm();
               onClose();
             }}
-            className={`px-4 py-2 text-sm font-medium text-white rounded-xl transition-colors ${
-              isDestructive
-                ? "bg-[#B91C1C] hover:bg-[#991B1B]"
-                : "bg-[#593A2C] hover:bg-[#472E23]"
-            }`}
           >
             {confirmText}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

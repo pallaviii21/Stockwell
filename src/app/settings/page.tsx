@@ -1,9 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
-import { Sliders, RefreshCw, Save, Building, Globe, Check } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Building, Save, RotateCcw } from "lucide-react";
 import { useInventoryStore } from "@/store/useInventoryStore";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Card } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { toast } from "sonner";
+import { CURRENCY_OPTIONS } from "@/constants/inventory";
+import { APP_STRINGS } from "@/constants/strings";
 
 export default function SettingsPage() {
   const { settings, updateSettings, resetToSampleData } = useInventoryStore();
@@ -14,6 +21,16 @@ export default function SettingsPage() {
   const [dateFormat, setDateFormat] = useState(settings.dateFormat);
   const [phone, setPhone] = useState(settings.phone);
   const [address, setAddress] = useState(settings.address);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    setBusinessName(settings.businessName);
+    setBusinessEmail(settings.businessEmail);
+    setCurrency(settings.currency);
+    setDateFormat(settings.dateFormat);
+    setPhone(settings.phone);
+    setAddress(settings.address);
+  }, [settings]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,18 +42,13 @@ export default function SettingsPage() {
       phone: phone.trim(),
       address: address.trim(),
     });
-    toast.success("Settings updated successfully");
+    toast.success(APP_STRINGS.TOASTS.SETTINGS_SAVED);
   };
 
-  const handleResetData = () => {
-    if (
-      confirm(
-        "Are you sure you want to reset all inventory, orders, and customer data to default sample seed data?"
-      )
-    ) {
-      resetToSampleData();
-      toast.success("Sample seed data restored successfully");
-    }
+  const handleResetConfirm = () => {
+    resetToSampleData();
+    setIsResetConfirmOpen(false);
+    toast.success(APP_STRINGS.TOASTS.DATA_RESET);
   };
 
   return (
@@ -53,141 +65,114 @@ export default function SettingsPage() {
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Business Profile */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#E9E2D8] shadow-sm space-y-4">
+        <Card className="space-y-4">
           <div className="flex items-center gap-2 pb-3 border-b border-[#E9E2D8]">
             <Building className="w-5 h-5 text-[#593A2C]" />
             <h2 className="text-xl sm:text-[22px] font-bold text-[#30251F]">Company Information</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div>
-              <label className="block font-semibold text-[#593A2C] mb-1">Business Name</label>
-              <input
-                type="text"
-                required
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
-              />
-            </div>
+            <Input
+              label="Business Name"
+              required
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+            />
 
-            <div>
-              <label className="block font-semibold text-[#593A2C] mb-1">Business Email</label>
-              <input
-                type="email"
-                required
-                value={businessEmail}
-                onChange={(e) => setBusinessEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
-              />
-            </div>
+            <Input
+              label="Business Email"
+              type="email"
+              required
+              value={businessEmail}
+              onChange={(e) => setBusinessEmail(e.target.value)}
+            />
 
-            <div>
-              <label className="block font-semibold text-[#593A2C] mb-1">Business Phone</label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
-              />
-            </div>
+            <Input
+              label="Business Phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
 
-            <div>
-              <label className="block font-semibold text-[#593A2C] mb-1">Business Address</label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
-              />
-            </div>
+            <Input
+              label="Business Address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
           </div>
-        </div>
+        </Card>
 
-        {/* Currency & Regional Preferences */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#E9E2D8] shadow-sm space-y-4">
-          <div className="flex items-center gap-2 pb-3 border-b border-[#E9E2D8]">
-            <Globe className="w-5 h-5 text-[#593A2C]" />
-            <h2 className="text-xl sm:text-[22px] font-bold text-[#30251F]">Regional & Currency Formatting</h2>
-          </div>
+        {/* Currency & Formatting */}
+        <Card className="space-y-4">
+          <h2 className="text-xl sm:text-[22px] font-bold text-[#30251F] pb-3 border-b border-[#E9E2D8]">
+            Regional & Localization
+          </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div>
-              <label className="block font-semibold text-[#593A2C] mb-1">Currency Symbol</label>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
-              >
-                <option value="₹">INR (₹) — Indian Rupee (Default)</option>
-                <option value="$">USD ($) — US Dollar</option>
-                <option value="€">EUR (€) — Euro</option>
-                <option value="£">GBP (£) — British Pound</option>
-              </select>
-            </div>
+            <Select
+              label="Primary Currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+            >
+              {CURRENCY_OPTIONS.map((c) => (
+                <option key={c.code} value={c.symbol}>
+                  {c.label}
+                </option>
+              ))}
+            </Select>
 
-            <div>
-              <label className="block font-semibold text-[#593A2C] mb-1">Date Format</label>
-              <select
-                value={dateFormat}
-                onChange={(e) => setDateFormat(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
-              >
-                <option value="DD/MM/YYYY">DD/MM/YYYY (Standard)</option>
-                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
-              </select>
-            </div>
+            <Select
+              label="Date Display Format"
+              value={dateFormat}
+              onChange={(e) => setDateFormat(e.target.value)}
+            >
+              <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 25/11/2026)</option>
+              <option value="MM/DD/YYYY">MM/DD/YYYY (e.g. 11/25/2026)</option>
+              <option value="YYYY-MM-DD">YYYY-MM-DD (ISO standard)</option>
+            </Select>
           </div>
-        </div>
+        </Card>
 
-        {/* Design System & Aesthetic Information */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#E9E2D8] shadow-sm space-y-3">
-          <h2 className="text-xl sm:text-[22px] font-bold text-[#30251F]">Theme & Palette Identity</h2>
-          <p className="text-sm text-[#918477]">
-            Stockwell uses a warm beige, cream, and brown aesthetic inspired by premium minimalist
-            SaaS design.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-sm">
-            <div className="p-3 rounded-xl border border-[#E9E2D8] bg-[#F8F6F1] flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-md bg-[#F8F6F1] border border-[#E9E2D8]"></span>
-              <span className="font-mono text-xs text-[#593A2C]">#F8F6F1 (Bg)</span>
-            </div>
-            <div className="p-3 rounded-xl border border-[#E9E2D8] bg-[#F0EBE2] flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-md bg-[#F0EBE2] border border-[#E9E2D8]"></span>
-              <span className="font-mono text-xs text-[#593A2C]">#F0EBE2 (Sidebar)</span>
-            </div>
-            <div className="p-3 rounded-xl border border-[#E9E2D8] bg-white flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-md bg-[#593A2C]"></span>
-              <span className="font-mono text-xs text-[#593A2C]">#593A2C (Primary)</span>
-            </div>
-            <div className="p-3 rounded-xl border border-[#E9E2D8] bg-white flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-md bg-[#A78B73]"></span>
-              <span className="font-mono text-xs text-[#593A2C]">#A78B73 (Taupe)</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center justify-between pt-2">
-          <button
-            type="button"
-            onClick={handleResetData}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#E9E2D8] bg-white hover:bg-[#FEE2E2]/50 text-sm font-semibold text-[#B91C1C] transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Reset Sample Data</span>
-          </button>
-
-          <button
-            type="submit"
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#593A2C] hover:bg-[#472E23] text-white text-sm sm:text-base font-semibold shadow-xs transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            <span>Save Settings</span>
-          </button>
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <Button variant="primary" size="lg" type="submit">
+            <Save className="w-4 h-4 mr-2" />
+            <span>{APP_STRINGS.COMMON.SAVE}</span>
+          </Button>
         </div>
       </form>
+
+      {/* Data Management Section */}
+      <Card className="border-[#FDE68A] bg-[#FEF9E7]/30 space-y-4">
+        <div>
+          <h3 className="text-base font-bold text-[#B45309]">Reset Sample Data</h3>
+          <p className="text-xs sm:text-sm text-[#765440] mt-1">
+            Need to restart or prepare a live demo? Restore all products, sales orders, purchase
+            orders, and customer records to their default seed states.
+          </p>
+        </div>
+
+        <div>
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => setIsResetConfirmOpen(true)}
+            className="border-[#B45309] text-[#B45309] hover:bg-[#FEF3C7]"
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            <span>Reset to Sample Data</span>
+          </Button>
+        </div>
+      </Card>
+
+      {/* Reset Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isResetConfirmOpen}
+        onClose={() => setIsResetConfirmOpen(false)}
+        onConfirm={handleResetConfirm}
+        title="Reset All Sample Data"
+        message="Are you sure you want to reset all inventory, orders, customer records, and stock history to initial sample seed data? Any manual edits will be overwritten."
+        confirmText="Reset Everything"
+        isDestructive={false}
+      />
     </div>
   );
 }

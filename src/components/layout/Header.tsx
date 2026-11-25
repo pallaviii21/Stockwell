@@ -1,20 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { usePathname } from "next/navigation";
-import {
-  Search,
-  Calendar,
-  ChevronDown,
-  RefreshCw,
-  Sliders,
-  ExternalLink,
-  ShieldCheck,
-} from "lucide-react";
+import { Search, Calendar } from "lucide-react";
 import { NotificationDropdown } from "@/components/ui/NotificationDropdown";
 import { GlobalSearchModal } from "@/components/ui/GlobalSearchModal";
 import { useInventoryStore } from "@/store/useInventoryStore";
 import Link from "next/link";
+import { APP_STRINGS } from "@/constants/strings";
+
+const BREADCRUMB_MAP: Record<string, [string, string]> = {
+  "/": ["Workspace", "Dashboard Overview"],
+  "/products": ["Operations", "Products Catalogue"],
+  "/sales": ["Operations", "Sales Orders"],
+  "/purchases": ["Operations", "Purchase Orders"],
+  "/stock": ["Operations", "Stock & Movements"],
+  "/reports": ["Analytics", "Business Reports"],
+  "/customers": ["Management", "Customer Accounts"],
+  "/suppliers": ["Management", "Supplier Directory"],
+  "/settings": ["Preferences", "General Settings"],
+};
 
 export const Header: React.FC = () => {
   const pathname = usePathname();
@@ -22,32 +27,17 @@ export const Header: React.FC = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { resetToSampleData } = useInventoryStore();
 
-  const getBreadcrumbs = () => {
-    switch (pathname) {
-      case "/":
-        return ["Workspace", "Dashboard Overview"];
-      case "/products":
-        return ["Operations", "Products Catalogue"];
-      case "/sales":
-        return ["Operations", "Sales Orders"];
-      case "/purchases":
-        return ["Operations", "Purchase Orders"];
-      case "/stock":
-        return ["Operations", "Stock & Movements"];
-      case "/reports":
-        return ["Analytics", "Business Reports"];
-      case "/customers":
-        return ["Management", "Customer Accounts"];
-      case "/suppliers":
-        return ["Management", "Supplier Directory"];
-      case "/settings":
-        return ["Preferences", "General Settings"];
-      default:
-        return ["Stockwell", "Overview"];
-    }
-  };
+  const breadcrumbs = BREADCRUMB_MAP[pathname] || [APP_STRINGS.BRAND.NAME, "Overview"];
 
-  const breadcrumbs = getBreadcrumbs();
+  // Dynamically formatted current date
+  const currentDateString = useMemo(() => {
+    return new Intl.DateTimeFormat("en-US", {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date());
+  }, []);
 
   return (
     <>
@@ -67,7 +57,7 @@ export const Header: React.FC = () => {
           >
             <div className="flex items-center gap-2">
               <Search className="w-4 h-4 text-[#A78B73]" />
-              <span>Search products, orders, customers...</span>
+              <span>{APP_STRINGS.COMMON.SEARCH_PLACEHOLDER}</span>
             </div>
             <kbd className="px-1.5 py-0.5 text-xs font-semibold text-[#765440] bg-[#FAF8F5] rounded border border-[#E9E2D8]">
               ⌘K
@@ -89,7 +79,7 @@ export const Header: React.FC = () => {
           {/* Current Date Display */}
           <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F8F6F1] border border-[#E9E2D8] text-xs sm:text-sm text-[#593A2C] font-medium">
             <Calendar className="w-4 h-4 text-[#A78B73]" />
-            <span>Tuesday, Nov 24, 2026</span>
+            <span>{currentDateString}</span>
           </div>
 
           {/* Notifications Dropdown */}
@@ -99,54 +89,49 @@ export const Header: React.FC = () => {
           <div className="relative">
             <button
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="flex items-center gap-2 p-1 pl-2 rounded-xl border border-transparent hover:border-[#E9E2D8] hover:bg-[#FAF8F5] transition-all"
+              className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl hover:bg-[#F0EBE2] transition-colors border border-transparent hover:border-[#E9E2D8]"
             >
-              <div className="w-7 h-7 rounded-full bg-[#593A2C] text-white flex items-center justify-center font-bold text-xs">
+              <div className="w-7 h-7 rounded-lg bg-[#593A2C] text-[#F8F6F1] flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                 AM
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-[#918477]" />
+              <span className="hidden sm:inline-block text-xs font-medium text-[#30251F]">
+                {APP_STRINGS.BRAND.USER_NAME}
+              </span>
             </button>
 
             {isUserMenuOpen && (
-              <div
-                className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-[#E9E2D8] shadow-xl py-1 z-50 animate-in fade-in zoom-in-95"
-                onMouseLeave={() => setIsUserMenuOpen(false)}
-              >
-                <div className="px-4 py-2.5 border-b border-[#E9E2D8] bg-[#FAF8F5]">
-                  <p className="text-xs font-semibold text-[#30251F]">Alex Morgan</p>
+              <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-[#E9E2D8] shadow-xl z-50 p-2 animate-in fade-in slide-in-from-top-2 duration-150 text-xs">
+                <div className="px-3 py-2 border-b border-[#E9E2D8] mb-1">
+                  <p className="font-semibold text-[#30251F]">{APP_STRINGS.BRAND.USER_NAME}</p>
                   <p className="text-[11px] text-[#918477]">alex@stockwell.io</p>
                 </div>
 
-                <div className="p-1 space-y-0.5">
-                  <Link
-                    href="/settings"
-                    onClick={() => setIsUserMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-xs text-[#593A2C] hover:bg-[#F8F6F1] rounded-xl transition-colors"
-                  >
-                    <Sliders className="w-3.5 h-3.5 text-[#A78B73]" />
-                    <span>Business Settings</span>
-                  </Link>
+                <Link
+                  href="/settings"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-[#765440] hover:text-[#30251F] hover:bg-[#F8F6F1] transition-colors"
+                >
+                  <span>Company Settings</span>
+                </Link>
 
-                  <button
-                    onClick={() => {
-                      if (confirm("Reset all store data to default sample seed data?")) {
-                        resetToSampleData();
-                        setIsUserMenuOpen(false);
-                      }
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#B45309] hover:bg-[#FEF3C7]/40 rounded-xl transition-colors text-left"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Reset Sample Data</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    if (confirm("Reset application data to initial demonstration state?")) {
+                      resetToSampleData();
+                      setIsUserMenuOpen(false);
+                    }
+                  }}
+                  className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-xl text-[#B45309] hover:bg-[#FEF9E7] transition-colors mt-1"
+                >
+                  <span>Reset to Sample Data</span>
+                </button>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* Global Search Dialog */}
+      {/* Global Search Modal */}
       <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );

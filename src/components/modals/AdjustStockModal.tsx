@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useInventoryStore } from "@/store/useInventoryStore";
 import { toast } from "sonner";
 import { ArrowRight, AlertTriangle } from "lucide-react";
+import { APP_STRINGS } from "@/constants/strings";
 
 interface AdjustStockModalProps {
   isOpen: boolean;
@@ -26,7 +30,7 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
   const [quantity, setQuantity] = useState("5");
   const [reason, setReason] = useState("Manual audit adjustment");
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (preselectedProductId) {
       setProductId(preselectedProductId);
     }
@@ -85,33 +89,30 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
       maxWidth="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-        {/* Product selection */}
-        <div>
-          <label className="block text-xs sm:text-sm font-semibold text-[#593A2C] mb-1">Select Product</label>
-          <select
-            value={productId}
-            onChange={(e) => setProductId(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
-          >
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.sku}) — Available: {p.stockQuantity}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Select Product"
+          value={productId}
+          onChange={(e) => setProductId(e.target.value)}
+        >
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name} ({p.sku}) — Available: {p.stockQuantity}
+            </option>
+          ))}
+        </Select>
 
-        {/* Adjustment mode */}
         <div>
-          <label className="block text-xs sm:text-sm font-semibold text-[#593A2C] mb-1">Adjustment Type</label>
+          <label className="block text-xs sm:text-sm font-semibold text-[#593A2C] mb-1">
+            Adjustment Type
+          </label>
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => setType("add")}
-              className={`py-2.5 px-3 rounded-xl border text-sm font-semibold transition-all ${
+              className={`py-2 px-3 rounded-xl border text-xs sm:text-sm font-medium transition-all ${
                 type === "add"
-                  ? "bg-[#EBF5ED] border-[#C3E3C8] text-[#2E6930]"
-                  : "bg-white border-[#E9E2D8] text-[#918477] hover:border-[#D9CEBF]"
+                  ? "border-[#2E6930] bg-[#EBF5ED] text-[#2E6930] font-semibold shadow-xs"
+                  : "border-[#E9E2D8] bg-[#FAF8F5] text-[#765440] hover:bg-[#F0EBE2]"
               }`}
             >
               + Add Units
@@ -119,10 +120,10 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
             <button
               type="button"
               onClick={() => setType("subtract")}
-              className={`py-2.5 px-3 rounded-xl border text-sm font-semibold transition-all ${
+              className={`py-2 px-3 rounded-xl border text-xs sm:text-sm font-medium transition-all ${
                 type === "subtract"
-                  ? "bg-[#FEE2E2] border-[#FECACA] text-[#B91C1C]"
-                  : "bg-white border-[#E9E2D8] text-[#918477] hover:border-[#D9CEBF]"
+                  ? "border-[#B91C1C] bg-[#FEE2E2] text-[#B91C1C] font-semibold shadow-xs"
+                  : "border-[#E9E2D8] bg-[#FAF8F5] text-[#765440] hover:bg-[#F0EBE2]"
               }`}
             >
               - Remove Units
@@ -130,48 +131,42 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
             <button
               type="button"
               onClick={() => setType("set")}
-              className={`py-2.5 px-3 rounded-xl border text-sm font-semibold transition-all ${
+              className={`py-2 px-3 rounded-xl border text-xs sm:text-sm font-medium transition-all ${
                 type === "set"
-                  ? "bg-[#FEF3C7] border-[#FDE68A] text-[#B45309]"
-                  : "bg-white border-[#E9E2D8] text-[#918477] hover:border-[#D9CEBF]"
+                  ? "border-[#593A2C] bg-[#F0EBE2] text-[#593A2C] font-semibold shadow-xs"
+                  : "border-[#E9E2D8] bg-[#FAF8F5] text-[#765440] hover:bg-[#F0EBE2]"
               }`}
             >
-              = Set Exact
+              Set Exact Count
             </button>
           </div>
         </div>
 
-        {/* Quantity input */}
-        <div>
-          <label className="block text-xs sm:text-sm font-semibold text-[#593A2C] mb-1">
-            {type === "set" ? "New Total Count" : "Quantity to Adjust"}
-          </label>
-          <input
-            type="number"
-            min="1"
-            required
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
-          />
-        </div>
+        <Input
+          label={type === "set" ? "New Exact Quantity" : "Quantity Change Delta"}
+          type="number"
+          min="1"
+          required
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+        />
 
-        {/* Live Preview Box */}
+        {/* Live Calculation Preview Banner */}
         <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E9E2D8] flex items-center justify-between">
-          <div>
-            <span className="text-xs text-[#918477] block">Current Quantity</span>
-            <span className="text-xl font-bold text-[#30251F]">{currentQty} units</span>
+          <div className="text-xs text-[#918477]">
+            <span>Current: </span>
+            <span className="font-semibold text-[#30251F]">{currentQty}</span>
           </div>
-          <ArrowRight className="w-5 h-5 text-[#A78B73]" />
-          <div className="text-right">
-            <span className="text-xs text-[#918477] block">New Quantity</span>
+          <ArrowRight className="w-4 h-4 text-[#A78B73]" />
+          <div className="text-xs">
+            <span className="text-[#918477]">Updated: </span>
             <span
-              className={`text-xl font-bold ${
+              className={`font-bold ${
                 isInvalidNegative
-                  ? "text-red-600"
-                  : calculatedNewQty <= (selectedProduct?.minStockLevel || 0)
-                  ? "text-amber-600"
-                  : "text-emerald-700"
+                  ? "text-[#B91C1C]"
+                  : calculatedNewQty <= (selectedProduct?.minStockLevel || 10)
+                  ? "text-[#B45309]"
+                  : "text-[#2E6930]"
               }`}
             >
               {calculatedNewQty} units
@@ -180,43 +175,27 @@ export const AdjustStockModal: React.FC<AdjustStockModalProps> = ({
         </div>
 
         {isInvalidNegative && (
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-50 text-red-700 text-xs sm:text-sm">
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#FEE2E2] text-[#B91C1C] text-xs font-medium">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>Stock cannot be reduced below zero. Adjust quantity.</span>
+            <span>Cannot reduce quantity below zero units</span>
           </div>
         )}
 
-        {/* Reason */}
-        <div>
-          <label className="block text-xs sm:text-sm font-semibold text-[#593A2C] mb-1">
-            Reason / Audit Reference
-          </label>
-          <input
-            type="text"
-            required
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Physical inventory count variance, transit damage write-off"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
-          />
-        </div>
+        <Input
+          label="Reason for Adjustment *"
+          required
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Quarterly physical recount, damaged stock..."
+        />
 
-        {/* Submit */}
         <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E9E2D8]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 sm:px-5 sm:py-2.5 font-medium text-[#593A2C] bg-[#F0EBE2] hover:bg-[#EAE4DC] rounded-xl transition-colors text-sm sm:text-base"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isInvalidNegative}
-            className="px-5 py-2 sm:px-6 sm:py-2.5 font-semibold text-white bg-[#593A2C] hover:bg-[#472E23] rounded-xl shadow-xs transition-colors disabled:opacity-50 text-sm sm:text-base"
-          >
+          <Button variant="secondary" onClick={onClose}>
+            {APP_STRINGS.COMMON.CANCEL}
+          </Button>
+          <Button variant="primary" type="submit" disabled={isInvalidNegative}>
             Apply Adjustment
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Package,
   CircleDollarSign,
@@ -11,18 +12,18 @@ import {
   Truck,
   SlidersHorizontal,
   ArrowUpRight,
-  RefreshCcw,
-  Boxes,
 } from "lucide-react";
 import { useInventoryStore } from "@/store/useInventoryStore";
-import { formatCurrency, formatDate, calculateStockStatus } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { DATE_FILTER_OPTIONS } from "@/constants/inventory";
 import { AddProductModal } from "@/components/modals/AddProductModal";
 import { CreateSalesOrderModal } from "@/components/modals/CreateSalesOrderModal";
 import { CreatePurchaseOrderModal } from "@/components/modals/CreatePurchaseOrderModal";
 import { AdjustStockModal } from "@/components/modals/AdjustStockModal";
-import Link from "next/link";
 import {
   AreaChart,
   Area,
@@ -34,7 +35,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from "recharts";
 
 type DateRange = "today" | "7days" | "30days" | "all";
@@ -49,7 +49,7 @@ export default function DashboardPage() {
   const [isAdjustStockOpen, setIsAdjustStockOpen] = useState(false);
   const [preselectedRestockProduct, setPreselectedRestockProduct] = useState<string | undefined>();
 
-  const { products, salesOrders, activities, settings, getMetrics } = useInventoryStore();
+  const { products, salesOrders, settings, getMetrics } = useInventoryStore();
 
   const metrics = getMetrics();
 
@@ -134,46 +134,20 @@ export default function DashboardPage() {
         {/* Date Filter Pills */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center p-1 rounded-xl bg-[#F0EBE2] border border-[#E9E2D8] text-sm">
-            <button
-              onClick={() => setDateFilter("today")}
-              className={`px-3.5 py-2 rounded-lg font-medium transition-all text-sm ${
-                dateFilter === "today"
-                  ? "bg-white text-[#593A2C] shadow-xs font-semibold"
-                  : "text-[#765440] hover:text-[#30251F]"
-              }`}
-            >
-              Today
-            </button>
-            <button
-              onClick={() => setDateFilter("7days")}
-              className={`px-3.5 py-2 rounded-lg font-medium transition-all text-sm ${
-                dateFilter === "7days"
-                  ? "bg-white text-[#593A2C] shadow-xs font-semibold"
-                  : "text-[#765440] hover:text-[#30251F]"
-              }`}
-            >
-              Last 7 days
-            </button>
-            <button
-              onClick={() => setDateFilter("30days")}
-              className={`px-3.5 py-2 rounded-lg font-medium transition-all text-sm ${
-                dateFilter === "30days"
-                  ? "bg-white text-[#593A2C] shadow-xs font-semibold"
-                  : "text-[#765440] hover:text-[#30251F]"
-              }`}
-            >
-              Last 30 days
-            </button>
-            <button
-              onClick={() => setDateFilter("all")}
-              className={`px-3.5 py-2 rounded-lg font-medium transition-all text-sm ${
-                dateFilter === "all"
-                  ? "bg-white text-[#593A2C] shadow-xs font-semibold"
-                  : "text-[#765440] hover:text-[#30251F]"
-              }`}
-            >
-              All time
-            </button>
+            {DATE_FILTER_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setDateFilter(option.value as DateRange)}
+                className={`px-3.5 py-2 rounded-lg font-medium transition-all text-sm ${
+                  dateFilter === option.value
+                    ? "bg-white text-[#593A2C] shadow-xs font-semibold"
+                    : "text-[#765440] hover:text-[#30251F]"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -185,37 +159,44 @@ export default function DashboardPage() {
           <span>Quick Actions</span>
         </div>
         <div className="flex items-center flex-wrap gap-2.5">
-          <button
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => setIsAddProductOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#593A2C] hover:bg-[#472E23] text-white text-sm font-semibold shadow-xs transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Add Product</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            size="md"
             onClick={() => setIsNewSaleOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-[#FAF8F5] text-[#30251F] border border-[#E9E2D8] text-sm font-semibold shadow-xs transition-colors"
+            className="bg-white text-[#30251F]"
           >
             <ShoppingCart className="w-4 h-4 text-[#2E6930]" />
             <span>New Sale</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            size="md"
             onClick={() => setIsNewPurchaseOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-[#FAF8F5] text-[#30251F] border border-[#E9E2D8] text-sm font-semibold shadow-xs transition-colors"
+            className="bg-white text-[#30251F]"
           >
             <Truck className="w-4 h-4 text-[#593A2C]" />
             <span>New Purchase</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            size="md"
             onClick={() => {
               setPreselectedRestockProduct(undefined);
               setIsAdjustStockOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-[#FAF8F5] text-[#30251F] border border-[#E9E2D8] text-sm font-semibold shadow-xs transition-colors"
+            className="bg-white text-[#30251F]"
           >
             <SlidersHorizontal className="w-4 h-4 text-[#A78B73]" />
             <span>Adjust Stock</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -268,7 +249,7 @@ export default function DashboardPage() {
       {/* CHARTS ROW: Sales Overview & Inventory Donut */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart A: Sales Overview Area Chart (2 cols) */}
-        <div className="lg:col-span-2 p-5 sm:p-6 rounded-2xl bg-white border border-[#E9E2D8] shadow-sm flex flex-col justify-between">
+        <Card className="lg:col-span-2 flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl sm:text-[22px] font-bold text-[#30251F]">Sales Overview</h2>
@@ -324,10 +305,10 @@ export default function DashboardPage() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </Card>
 
         {/* Chart B: Inventory Distribution Donut Chart (1 col) */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#E9E2D8] shadow-sm flex flex-col justify-between">
+        <Card className="flex flex-col justify-between">
           <div>
             <h2 className="text-xl sm:text-[22px] font-bold text-[#30251F]">Inventory Health</h2>
             <p className="text-xs sm:text-sm text-[#918477] mt-0.5">Product stock distribution</p>
@@ -376,13 +357,13 @@ export default function DashboardPage() {
               <span className="text-base font-bold text-[#B91C1C]">{metrics.outOfStockCount}</span>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* LOWER SECTION: Low Stock Alerts & Recent Transactions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* LOW STOCK ALERTS TABLE */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#E9E2D8] shadow-sm flex flex-col justify-between">
+        <Card className="flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-[#FEF3C7] text-[#B45309]">
@@ -439,15 +420,16 @@ export default function DashboardPage() {
                         {p.minStockLevel}
                       </td>
                       <td className="py-3 px-3 text-right">
-                        <button
+                        <Button
+                          size="sm"
+                          variant="secondary"
                           onClick={() => {
                             setPreselectedRestockProduct(p.id);
                             setIsAdjustStockOpen(true);
                           }}
-                          className="px-3 py-1.5 rounded-xl bg-[#F0EBE2] hover:bg-[#593A2C] hover:text-white text-[#593A2C] text-xs sm:text-sm font-semibold transition-colors"
                         >
                           Restock
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -455,10 +437,10 @@ export default function DashboardPage() {
               </table>
             )}
           </div>
-        </div>
+        </Card>
 
         {/* RECENT TRANSACTIONS TABLE */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#E9E2D8] shadow-sm flex flex-col justify-between">
+        <Card className="flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-[#EBF5ED] text-[#2E6930]">
@@ -511,7 +493,7 @@ export default function DashboardPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* MODALS */}

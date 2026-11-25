@@ -1,56 +1,38 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import {
-  ShoppingCart,
-  Plus,
-  Search,
-  Filter,
-  Eye,
-  Trash2,
-  CheckCircle2,
-  Clock,
-  FileText,
-  AlertCircle,
-  XCircle,
-} from "lucide-react";
+import React, { useState } from "react";
+import { Plus, Eye, Trash2 } from "lucide-react";
 import { useInventoryStore } from "@/store/useInventoryStore";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { Select } from "@/components/ui/Select";
 import { CreateSalesOrderModal } from "@/components/modals/CreateSalesOrderModal";
+import { useSalesList } from "@/hooks/useSalesList";
 import { toast } from "sonner";
 import { OrderStatus, PaymentStatus, SalesOrder } from "@/types";
+import { APP_STRINGS } from "@/constants/strings";
 
 export default function SalesPage() {
   const { salesOrders, settings, updateSalesOrder, deleteSalesOrder } = useInventoryStore();
 
-  const [search, setSearch] = useState("");
-  const [orderStatusFilter, setOrderStatusFilter] = useState<string>("all");
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>("all");
+  const {
+    search,
+    setSearch,
+    orderStatusFilter,
+    setOrderStatusFilter,
+    paymentStatusFilter,
+    setPaymentStatusFilter,
+    filteredOrders,
+  } = useSalesList(salesOrders);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [orderToView, setOrderToView] = useState<SalesOrder | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<SalesOrder | null>(null);
-
-  // Filtered orders
-  const filteredOrders = useMemo(() => {
-    return salesOrders.filter((order) => {
-      const matchesSearch =
-        order.id.toLowerCase().includes(search.toLowerCase()) ||
-        order.customerName.toLowerCase().includes(search.toLowerCase()) ||
-        order.items.some((item) => item.productName.toLowerCase().includes(search.toLowerCase()));
-
-      const matchesOrderStatus =
-        orderStatusFilter === "all" || order.orderStatus === orderStatusFilter;
-
-      const matchesPaymentStatus =
-        paymentStatusFilter === "all" || order.paymentStatus === paymentStatusFilter;
-
-      return matchesSearch && matchesOrderStatus && matchesPaymentStatus;
-    });
-  }, [salesOrders, search, orderStatusFilter, paymentStatusFilter]);
 
   const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
     const res = updateSalesOrder(orderId, { orderStatus: newStatus });
@@ -91,306 +73,273 @@ export default function SalesPage() {
             Track customer orders, invoice payments, and automated stock deductions.
           </p>
         </div>
-        <button
+        <Button
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#593A2C] hover:bg-[#472E23] text-white text-sm sm:text-base font-semibold shadow-xs transition-colors self-start sm:self-auto"
+          size="lg"
+          className="self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>New Sale Order</span>
-        </button>
+        </Button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="p-4 rounded-2xl bg-white border border-[#E9E2D8] shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-sm">
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-[#A78B73] absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by Order ID, Customer, or item..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] placeholder-[#918477] focus:border-[#593A2C] focus:bg-white outline-none transition-colors text-sm"
-          />
-        </div>
+      <Card className="p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-sm">
+        <SearchInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onClear={() => setSearch("")}
+          placeholder="Search by Order ID, Customer, or item name..."
+          className="max-w-md"
+        />
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          {/* Order Status */}
-          <select
-            value={orderStatusFilter}
-            onChange={(e) => setOrderStatusFilter(e.target.value)}
-            className="px-3.5 py-2 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
-          >
-            <option value="all">All Order Statuses</option>
-            <option value="completed">Completed</option>
-            <option value="pending">Pending</option>
-            <option value="draft">Draft</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="w-36">
+            <Select
+              value={orderStatusFilter}
+              onChange={(e) => setOrderStatusFilter(e.target.value)}
+            >
+              <option value="all">All Orders</option>
+              <option value="completed">Completed</option>
+              <option value="pending">Pending</option>
+              <option value="draft">Draft</option>
+              <option value="cancelled">Cancelled</option>
+            </Select>
+          </div>
 
-          {/* Payment Status */}
-          <select
-            value={paymentStatusFilter}
-            onChange={(e) => setPaymentStatusFilter(e.target.value)}
-            className="px-3.5 py-2 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
-          >
-            <option value="all">All Payment Statuses</option>
-            <option value="paid">Paid</option>
-            <option value="partial">Partial</option>
-            <option value="unpaid">Unpaid</option>
-          </select>
+          <div className="w-36">
+            <Select
+              value={paymentStatusFilter}
+              onChange={(e) => setPaymentStatusFilter(e.target.value)}
+            >
+              <option value="all">All Payments</option>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+              <option value="unpaid">Unpaid</option>
+            </Select>
+          </div>
         </div>
-      </div>
+      </Card>
 
       {/* Sales Orders Table */}
-      <div className="rounded-2xl border border-[#E9E2D8] bg-white shadow-sm overflow-hidden">
+      <Card className="p-0 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#FAF8F5] border-b border-[#E9E2D8] text-xs sm:text-sm text-[#918477]">
-                <th className="py-3 px-4 font-semibold">Order ID</th>
-                <th className="py-3 px-4 font-semibold">Customer</th>
-                <th className="py-3 px-4 font-semibold">Order Date</th>
-                <th className="py-3 px-4 font-semibold">Items</th>
-                <th className="py-3 px-4 font-semibold">Total Amount</th>
-                <th className="py-3 px-4 font-semibold">Payment</th>
-                <th className="py-3 px-4 font-semibold">Fulfillment</th>
-                <th className="py-3 px-4 font-semibold text-right">Actions</th>
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[#FAF8F5] border-b border-[#E9E2D8] text-xs font-semibold text-[#765440] uppercase tracking-wider">
+              <tr>
+                <th className="py-3.5 px-4">Order ID</th>
+                <th className="py-3.5 px-4">Customer</th>
+                <th className="py-3.5 px-4">Order Date</th>
+                <th className="py-3.5 px-4 text-center">Items</th>
+                <th className="py-3.5 px-4 text-right">Total Amount</th>
+                <th className="py-3.5 px-4 text-center">Payment Status</th>
+                <th className="py-3.5 px-4 text-center">Order Status</th>
+                <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E9E2D8] text-sm sm:text-base">
+            <tbody className="divide-y divide-[#E9E2D8]">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-[#918477]">
-                    <ShoppingCart className="w-8 h-8 text-[#A78B73] mx-auto mb-2 opacity-50" />
-                    <p className="font-medium text-sm text-[#30251F]">No sales orders found</p>
-                    <p className="text-xs mt-1">Create a new sale order to record transactions.</p>
+                  <td colSpan={8} className="text-center py-12 text-[#918477]">
+                    <p className="font-medium text-sm text-[#593A2C]">No sales orders found</p>
+                    <p className="text-xs mt-1">Try adjusting search criteria or create a new order</p>
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => {
-                  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
-                  const itemsSummary = order.items
-                    .map((item) => `${item.productName} (x${item.quantity})`)
-                    .join(", ");
-
-                  return (
-                    <tr key={order.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-bold text-[#593A2C]">
-                        {order.id}
-                      </td>
-                      <td className="py-3.5 px-4 font-medium text-[#30251F]">
-                        <span className="block font-semibold">{order.customerName}</span>
-                        <span className="text-[11px] text-[#918477]">{order.customerEmail}</span>
-                      </td>
-                      <td className="py-3.5 px-4 text-[#765440]">{formatDate(order.orderDate)}</td>
-                      <td className="py-3.5 px-4 max-w-[220px]">
-                        <span className="text-[11px] font-medium text-[#30251F] block truncate">
-                          {itemsSummary}
-                        </span>
-                        <span className="text-[10px] text-[#918477]">
-                          {itemCount} {itemCount === 1 ? "unit" : "units"} across {order.items.length}{" "}
-                          {order.items.length === 1 ? "line" : "lines"}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-[#30251F] text-sm">
-                        {formatCurrency(order.totalAmount, settings.currency)}
-                      </td>
-                      <td className="py-3.5 px-4">
+                filteredOrders.map((order) => (
+                  <tr
+                    key={order.id}
+                    className="hover:bg-[#FAF8F5]/60 transition-colors group"
+                  >
+                    <td className="py-3.5 px-4 font-mono font-bold text-[#30251F]">
+                      {order.id}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-semibold text-[#30251F]">{order.customerName}</div>
+                      <div className="text-xs text-[#918477]">{order.customerEmail}</div>
+                    </td>
+                    <td className="py-3.5 px-4 text-xs sm:text-sm text-[#765440]">
+                      {formatDate(order.orderDate)}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className="font-medium text-xs px-2 py-0.5 rounded-full bg-[#F0EBE2] text-[#593A2C]">
+                        {order.items.length} items
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right font-bold text-[#30251F] text-xs sm:text-sm">
+                      {formatCurrency(order.totalAmount, settings.currency)}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="inline-block relative">
                         <select
                           value={order.paymentStatus}
                           onChange={(e) =>
                             handlePaymentChange(order.id, e.target.value as PaymentStatus)
                           }
-                          className="px-2 py-0.5 rounded-lg border border-[#E9E2D8] bg-[#FAF8F5] text-xs font-medium cursor-pointer"
+                          className="appearance-none cursor-pointer bg-transparent outline-none text-center"
                         >
                           <option value="paid">Paid</option>
                           <option value="partial">Partial</option>
                           <option value="unpaid">Unpaid</option>
                         </select>
-                      </td>
-                      <td className="py-3.5 px-4">
+                        <Badge variant={order.paymentStatus} size="sm">
+                          {order.paymentStatus}
+                        </Badge>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="inline-block relative">
                         <select
                           value={order.orderStatus}
                           onChange={(e) =>
                             handleStatusChange(order.id, e.target.value as OrderStatus)
                           }
-                          className={`px-2 py-0.5 rounded-lg border text-xs font-semibold cursor-pointer ${
-                            order.orderStatus === "completed"
-                              ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-                              : order.orderStatus === "pending"
-                              ? "bg-amber-50 border-amber-300 text-amber-800"
-                              : order.orderStatus === "draft"
-                              ? "bg-zinc-100 border-zinc-300 text-zinc-700"
-                              : "bg-red-50 border-red-300 text-red-700"
-                          }`}
+                          className="appearance-none cursor-pointer bg-transparent outline-none text-center"
                         >
                           <option value="completed">Completed</option>
                           <option value="pending">Pending</option>
                           <option value="draft">Draft</option>
                           <option value="cancelled">Cancelled</option>
                         </select>
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => setOrderToView(order)}
-                            className="p-1.5 text-[#918477] hover:text-[#593A2C] hover:bg-[#F0EBE2] rounded-lg transition-colors"
-                            title="View Invoice & Items"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setOrderToDelete(order)}
-                            className="p-1.5 text-[#918477] hover:text-[#B91C1C] hover:bg-[#FEE2E2] rounded-lg transition-colors"
-                            title="Delete Order"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                        <Badge variant={order.orderStatus} size="sm">
+                          {order.orderStatus}
+                        </Badge>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setOrderToView(order)}
+                          title="View Invoice"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setOrderToDelete(order)}
+                          title="Delete Order"
+                          className="hover:text-[#B91C1C]"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
+      </Card>
 
-        {/* Footer */}
-        <div className="px-4 py-3 bg-[#FAF8F5] border-t border-[#E9E2D8] flex items-center justify-between text-xs text-[#918477]">
-          <span>
-            Total: <strong>{filteredOrders.length}</strong> orders (
-            <strong>
-              {formatCurrency(
-                filteredOrders.reduce((sum, o) => sum + o.totalAmount, 0),
-                settings.currency
-              )}
-            </strong>{" "}
-            value)
-          </span>
-          <span className="font-mono text-[11px]">Real-time synchronization enabled</span>
-        </div>
-      </div>
-
-      {/* VIEW ORDER INVOICE MODAL */}
-      {orderToView && (
-        <Modal
-          isOpen={Boolean(orderToView)}
-          onClose={() => setOrderToView(null)}
-          title={`Order Invoice — ${orderToView.id}`}
-          subtitle={`Placed on ${formatDate(orderToView.orderDate)} for ${orderToView.customerName}`}
-          maxWidth="2xl"
-        >
-          <div className="space-y-4 text-xs">
-            {/* Meta banner */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-[#FAF8F5] border border-[#E9E2D8]">
-              <div>
-                <span className="text-[#918477] block text-[11px]">Customer</span>
-                <span className="font-semibold text-[#30251F]">{orderToView.customerName}</span>
-                <span className="text-[10px] text-[#918477] block">{orderToView.customerEmail}</span>
-              </div>
-              <div>
-                <span className="text-[#918477] block text-[11px]">Order Status</span>
-                <Badge variant={orderToView.orderStatus} size="sm">
-                  {orderToView.orderStatus.toUpperCase()}
-                </Badge>
-              </div>
-              <div>
-                <span className="text-[#918477] block text-[11px]">Payment Status</span>
-                <Badge variant={orderToView.paymentStatus} size="sm">
-                  {orderToView.paymentStatus.toUpperCase()}
-                </Badge>
-              </div>
-              <div>
-                <span className="text-[#918477] block text-[11px]">Stock Status</span>
-                <span
-                  className={`font-semibold ${
-                    orderToView.inventoryDeducted ? "text-emerald-700" : "text-amber-700"
-                  }`}
-                >
-                  {orderToView.inventoryDeducted ? "Deducted from Stock" : "Pending Deduction"}
-                </span>
-              </div>
-            </div>
-
-            {/* Items table */}
-            <div className="border border-[#E9E2D8] rounded-xl overflow-hidden bg-white">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-[#FAF8F5] border-b border-[#E9E2D8] text-[11px] text-[#918477]">
-                    <th className="p-3 font-semibold">Item & SKU</th>
-                    <th className="p-3 font-semibold text-center">Quantity</th>
-                    <th className="p-3 font-semibold text-right">Unit Price</th>
-                    <th className="p-3 font-semibold text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E9E2D8]">
-                  {orderToView.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="p-3 font-medium text-[#30251F]">
-                        <span>{item.productName}</span>
-                        <span className="text-[10px] font-mono text-[#918477] block">
-                          SKU: {item.sku}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center font-bold text-[#765440]">{item.quantity}</td>
-                      <td className="p-3 text-right text-[#918477]">
-                        {formatCurrency(item.unitPrice, settings.currency)}
-                      </td>
-                      <td className="p-3 text-right font-bold text-[#30251F]">
-                        {formatCurrency(item.total, settings.currency)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Total breakdown */}
-            <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E9E2D8] flex items-center justify-between">
-              <div>
-                <span className="text-[11px] text-[#918477] block">Notes:</span>
-                <p className="text-[#30251F] text-xs">
-                  {orderToView.notes || "No special instructions provided."}
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs text-[#918477] block">Invoice Grand Total</span>
-                <span className="text-xl font-bold text-[#2E6930]">
-                  {formatCurrency(orderToView.totalAmount, settings.currency)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => setOrderToView(null)}
-                className="px-4 py-2 rounded-xl bg-[#593A2C] text-white font-medium hover:bg-[#472E23] transition-colors"
-              >
-                Close View
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* CREATE SALE ORDER MODAL */}
+      {/* Create Order Modal */}
       <CreateSalesOrderModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
       />
 
-      {/* CONFIRM DELETE DIALOG */}
+      {/* View Order Invoice Modal */}
+      {orderToView && (
+        <Modal
+          isOpen={Boolean(orderToView)}
+          onClose={() => setOrderToView(null)}
+          title={`Sales Invoice — ${orderToView.id}`}
+          subtitle={`Issued on ${formatDate(orderToView.orderDate)} to ${orderToView.customerName}`}
+          maxWidth="2xl"
+        >
+          <div className="space-y-5 text-sm">
+            {/* Status overview banner */}
+            <div className="flex items-center justify-between p-4 rounded-xl bg-[#FAF8F5] border border-[#E9E2D8]">
+              <div>
+                <span className="text-xs text-[#918477]">Order Status</span>
+                <div className="mt-1">
+                  <Badge variant={orderToView.orderStatus}>{orderToView.orderStatus}</Badge>
+                </div>
+              </div>
+              <div>
+                <span className="text-xs text-[#918477]">Payment Status</span>
+                <div className="mt-1">
+                  <Badge variant={orderToView.paymentStatus}>{orderToView.paymentStatus}</Badge>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-[#918477]">Total Amount</span>
+                <div className="text-xl font-bold text-[#30251F] mt-0.5">
+                  {formatCurrency(orderToView.totalAmount, settings.currency)}
+                </div>
+              </div>
+            </div>
+
+            {/* Line Items Table */}
+            <div>
+              <span className="text-xs font-semibold text-[#593A2C] mb-2 block">
+                Itemized Products ({orderToView.items.length})
+              </span>
+              <div className="rounded-xl border border-[#E9E2D8] overflow-hidden bg-white">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-[#FAF8F5] text-xs font-semibold text-[#765440] border-b border-[#E9E2D8]">
+                    <tr>
+                      <th className="p-3">Product Name</th>
+                      <th className="p-3 text-center">SKU</th>
+                      <th className="p-3 text-center">Quantity</th>
+                      <th className="p-3 text-right">Unit Price</th>
+                      <th className="p-3 text-right">Line Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E9E2D8]">
+                    {orderToView.items.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="p-3 font-medium text-[#30251F]">{item.productName}</td>
+                        <td className="p-3 text-center font-mono text-xs text-[#918477]">
+                          {item.sku}
+                        </td>
+                        <td className="p-3 text-center font-semibold text-[#30251F]">
+                          {item.quantity}
+                        </td>
+                        <td className="p-3 text-right text-[#765440]">
+                          {formatCurrency(item.unitPrice, settings.currency)}
+                        </td>
+                        <td className="p-3 text-right font-bold text-[#30251F]">
+                          {formatCurrency(item.total, settings.currency)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {orderToView.notes && (
+              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E9E2D8]">
+                <span className="text-xs font-semibold text-[#593A2C]">Order Notes:</span>
+                <p className="text-xs text-[#765440] mt-0.5">{orderToView.notes}</p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-4 border-t border-[#E9E2D8]">
+              <span className="text-xs text-[#918477]">
+                Stock Deducted: {orderToView.inventoryDeducted ? "Yes (Inventory updated)" : "No"}
+              </span>
+              <Button variant="secondary" onClick={() => setOrderToView(null)}>
+                {APP_STRINGS.COMMON.CLOSE}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={Boolean(orderToDelete)}
         onClose={() => setOrderToDelete(null)}
         onConfirm={handleDeleteConfirm}
         title="Delete Sales Order"
-        message={`Are you sure you want to delete order "${orderToDelete?.id}" for ${orderToDelete?.customerName}? If completed, the deducted inventory units will be automatically restored.`}
+        message={`Are you sure you want to delete order ${orderToDelete?.id}? If the order was marked Completed, the deducted inventory will automatically be restored.`}
         confirmText="Delete Order"
-        isDestructive={true}
+        isDestructive
       />
     </div>
   );

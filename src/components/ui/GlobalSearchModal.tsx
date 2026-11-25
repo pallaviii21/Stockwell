@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, Package, ShoppingCart, Truck, Users, X, ArrowRight } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useInventoryStore } from "@/store/useInventoryStore";
-import { formatCurrency } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { APP_STRINGS } from "@/constants/strings";
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
@@ -14,7 +14,7 @@ interface GlobalSearchModalProps {
 export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }) => {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const { products, customers, suppliers, salesOrders, settings } = useInventoryStore();
+  const { products, customers, suppliers, salesOrders } = useInventoryStore();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -145,29 +145,30 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
               {/* Products */}
               {searchResults.products.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#918477] uppercase tracking-wider mb-2">
-                    <Package className="w-3.5 h-3.5" />
-                    <span>Products</span>
+                  <div className="text-xs font-bold text-[#A78B73] uppercase tracking-wider mb-2">
+                    Products ({searchResults.products.length})
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     {searchResults.products.map((p) => (
-                      <div
+                      <button
                         key={p.id}
                         onClick={() => navigateTo("/products")}
-                        className="p-2.5 rounded-xl border border-[#E9E2D8] hover:border-[#593A2C] hover:bg-[#FAF8F5] cursor-pointer flex items-center justify-between transition-colors"
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-[#FAF8F5] transition-colors flex items-center justify-between group"
                       >
                         <div>
-                          <div className="text-sm font-medium text-[#30251F]">{p.name}</div>
+                          <div className="text-sm font-semibold text-[#30251F] group-hover:text-[#593A2C]">
+                            {p.name}
+                          </div>
                           <div className="text-xs text-[#918477]">
-                            SKU: {p.sku} • Category: {p.category} • Stock: {p.stockQuantity} units
+                            SKU: {p.sku} • Category: {p.category}
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-sm font-bold text-[#593A2C]">
-                            {formatCurrency(p.sellingPrice, settings.currency)}
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#F0EBE2] text-[#593A2C]">
+                            {p.stockQuantity} in stock
                           </span>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -176,29 +177,28 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
               {/* Sales Orders */}
               {searchResults.sales.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#918477] uppercase tracking-wider mb-2">
-                    <ShoppingCart className="w-3.5 h-3.5" />
-                    <span>Sales Orders</span>
+                  <div className="text-xs font-bold text-[#A78B73] uppercase tracking-wider mb-2">
+                    Sales Orders ({searchResults.sales.length})
                   </div>
-                  <div className="space-y-1.5">
-                    {searchResults.sales.map((s) => (
-                      <div
-                        key={s.id}
+                  <div className="space-y-1">
+                    {searchResults.sales.map((o) => (
+                      <button
+                        key={o.id}
                         onClick={() => navigateTo("/sales")}
-                        className="p-2.5 rounded-xl border border-[#E9E2D8] hover:border-[#593A2C] hover:bg-[#FAF8F5] cursor-pointer flex items-center justify-between transition-colors"
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-[#FAF8F5] transition-colors flex items-center justify-between group"
                       >
                         <div>
-                          <div className="text-sm font-medium text-[#30251F]">
-                            {s.id} — {s.customerName}
+                          <div className="text-sm font-semibold text-[#30251F] group-hover:text-[#593A2C]">
+                            Order {o.id}
                           </div>
                           <div className="text-xs text-[#918477]">
-                            Status: {s.orderStatus} • {s.items.length} items
+                            Customer: {o.customerName} • {o.items.length} items
                           </div>
                         </div>
-                        <span className="text-sm font-bold text-[#2E6930]">
-                          {formatCurrency(s.totalAmount, settings.currency)}
+                        <span className="text-xs capitalize font-medium text-[#765440]">
+                          {o.orderStatus}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -207,23 +207,23 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
               {/* Customers */}
               {searchResults.customers.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#918477] uppercase tracking-wider mb-2">
-                    <Users className="w-3.5 h-3.5" />
-                    <span>Customers</span>
+                  <div className="text-xs font-bold text-[#A78B73] uppercase tracking-wider mb-2">
+                    Customers ({searchResults.customers.length})
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     {searchResults.customers.map((c) => (
-                      <div
+                      <button
                         key={c.id}
                         onClick={() => navigateTo("/customers")}
-                        className="p-2.5 rounded-xl border border-[#E9E2D8] hover:border-[#593A2C] hover:bg-[#FAF8F5] cursor-pointer flex items-center justify-between transition-colors"
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-[#FAF8F5] transition-colors flex items-center justify-between group"
                       >
                         <div>
-                          <div className="text-sm font-medium text-[#30251F]">{c.name}</div>
-                          <div className="text-xs text-[#918477]">{c.company} • {c.email}</div>
+                          <div className="text-sm font-semibold text-[#30251F] group-hover:text-[#593A2C]">
+                            {c.name}
+                          </div>
+                          <div className="text-xs text-[#918477]">{c.company}</div>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-[#A78B73]" />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -232,35 +232,29 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
               {/* Suppliers */}
               {searchResults.suppliers.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#918477] uppercase tracking-wider mb-2">
-                    <Truck className="w-3.5 h-3.5" />
-                    <span>Suppliers</span>
+                  <div className="text-xs font-bold text-[#A78B73] uppercase tracking-wider mb-2">
+                    Suppliers ({searchResults.suppliers.length})
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     {searchResults.suppliers.map((s) => (
-                      <div
+                      <button
                         key={s.id}
                         onClick={() => navigateTo("/suppliers")}
-                        className="p-2.5 rounded-xl border border-[#E9E2D8] hover:border-[#593A2C] hover:bg-[#FAF8F5] cursor-pointer flex items-center justify-between transition-colors"
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-[#FAF8F5] transition-colors flex items-center justify-between group"
                       >
                         <div>
-                          <div className="text-sm font-medium text-[#30251F]">{s.name}</div>
-                          <div className="text-xs text-[#918477]">{s.company} • {s.phone}</div>
+                          <div className="text-sm font-semibold text-[#30251F] group-hover:text-[#593A2C]">
+                            {s.name}
+                          </div>
+                          <div className="text-xs text-[#918477]">{s.company}</div>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-[#A78B73]" />
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
             </div>
           )}
-        </div>
-
-        {/* Modal footer shortcut guide */}
-        <div className="px-4 py-2.5 bg-[#F0EBE2] border-t border-[#E9E2D8] flex items-center justify-between text-xs text-[#765440]">
-          <span>Tip: Press <strong>Esc</strong> to close</span>
-          <span>Click any result to jump directly to module</span>
         </div>
       </div>
     </div>

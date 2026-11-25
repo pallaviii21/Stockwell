@@ -1,20 +1,13 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import {
-  BarChart3,
-  TrendingUp,
-  Download,
-  Calendar,
-  Layers,
-  Truck,
-  ShoppingCart,
-  FileSpreadsheet,
-} from "lucide-react";
+import { BarChart3, TrendingUp, Download, Calendar } from "lucide-react";
 import { useInventoryStore } from "@/store/useInventoryStore";
 import { formatCurrency, formatDate, exportToCSV } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import {
   AreaChart,
   Area,
@@ -26,6 +19,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { APP_STRINGS } from "@/constants/strings";
 
 type ReportTab = "sales" | "purchases" | "stock";
 type DateFilter = "7days" | "30days" | "90days" | "all";
@@ -36,7 +30,6 @@ export default function ReportsPage() {
 
   const { products, salesOrders, purchaseOrders, settings } = useInventoryStore();
 
-  // Helper date threshold
   const dateThreshold = useMemo(() => {
     if (dateFilter === "all") return null;
     const d = new Date();
@@ -57,7 +50,6 @@ export default function ReportsPage() {
     const pending = filtered.filter((o) => o.orderStatus === "pending");
     const totalRevenue = completed.reduce((sum, o) => sum + o.totalAmount, 0);
 
-    // Chart trend by date
     const dateMap: Record<string, number> = {};
     completed.forEach((o) => {
       const key = formatDate(o.orderDate);
@@ -102,7 +94,7 @@ export default function ReportsPage() {
     }));
 
     return {
-      orders: filtered,
+      pos: filtered,
       totalSpend,
       totalCount: filtered.length,
       receivedCount: received.length,
@@ -111,93 +103,62 @@ export default function ReportsPage() {
     };
   }, [purchaseOrders, dateThreshold]);
 
-  // C. STOCK VALUATION REPORT DATA
-  const stockData = useMemo(() => {
-    const totalCostValue = products.reduce(
-      (sum, p) => sum + p.stockQuantity * p.purchasePrice,
-      0
-    );
-    const totalRetailValue = products.reduce(
-      (sum, p) => sum + p.stockQuantity * p.sellingPrice,
-      0
-    );
-    const lowStockCount = products.filter(
-      (p) => p.stockQuantity > 0 && p.stockQuantity <= p.minStockLevel
-    ).length;
-    const outOfStockCount = products.filter((p) => p.stockQuantity === 0).length;
-
-    const items = products.map((p) => {
-      const costVal = p.stockQuantity * p.purchasePrice;
-      const retailVal = p.stockQuantity * p.sellingPrice;
-      const margin =
-        p.sellingPrice > 0
-          ? (((p.sellingPrice - p.purchasePrice) / p.sellingPrice) * 100).toFixed(1)
-          : "0.0";
-
-      return {
-        id: p.id,
-        name: p.name,
-        sku: p.sku,
-        category: p.category,
-        stockQuantity: p.stockQuantity,
-        purchasePrice: p.purchasePrice,
-        sellingPrice: p.sellingPrice,
-        costValue: costVal,
-        retailValue: retailVal,
-        margin: `${margin}%`,
-      };
-    });
+  // C. STOCK VALUATION DATA
+  const stockValuationData = useMemo(() => {
+    const totalCost = products.reduce((sum, p) => sum + p.purchasePrice * p.stockQuantity, 0);
+    const totalRetail = products.reduce((sum, p) => sum + p.sellingPrice * p.stockQuantity, 0);
+    const potentialMargin = totalRetail - totalCost;
+    const marginPercent = totalRetail > 0 ? Math.round((potentialMargin / totalRetail) * 100) : 0;
 
     return {
-      totalCostValue,
-      totalRetailValue,
-      lowStockCount,
-      outOfStockCount,
-      items,
+      totalCost,
+      totalRetail,
+      potentialMargin,
+      marginPercent,
+      products,
     };
   }, [products]);
 
-  // CSV EXPORT HANDLERS
-  const exportSalesReport = () => {
+  // Export handlers
+  const handleExportSales = () => {
     const rows = salesData.orders.map((o) => ({
       "Order ID": o.id,
-      "Customer Name": o.customerName,
-      "Customer Email": o.customerEmail,
-      Date: formatDate(o.orderDate),
-      "Total Items": o.items.reduce((s, i) => s + i.quantity, 0),
-      "Total Amount (INR)": o.totalAmount,
-      "Order Status": o.orderStatus,
+      Customer: o.customerName,
+      "Order Date": o.orderDate,
+      "Total Amount": o.totalAmount,
       "Payment Status": o.paymentStatus,
+      "Order Status": o.orderStatus,
+      Items: o.items.map((i) => `${i.productName} (${i.quantity})`).join("; "),
     }));
-    exportToCSV(`Stockwell_Sales_Report_${dateFilter}`, rows);
+    exportToCSV(`Sales_Report_${dateFilter}`, rows);
   };
 
-  const exportPurchasesReport = () => {
-    const rows = purchaseData.orders.map((p) => ({
+  const handleExportPurchases = () => {
+    const rows = purchaseData.pos.map((p) => ({
       "PO Number": p.id,
       Supplier: p.supplierName,
-      Date: formatDate(p.orderDate),
-      "Expected Delivery": formatDate(p.expectedDelivery),
-      "Total Items": p.items.reduce((s, i) => s + i.quantity, 0),
-      "Total Amount (INR)": p.totalAmount,
+      "Order Date": p.orderDate,
+      "Expected Delivery": p.expectedDelivery,
+      "Total Amount": p.totalAmount,
       Status: p.status,
+      Items: p.items.map((i) => `${i.productName} (${i.quantity})`).join("; "),
     }));
-    exportToCSV(`Stockwell_Purchase_Report_${dateFilter}`, rows);
+    exportToCSV(`Purchase_Report_${dateFilter}`, rows);
   };
 
-  const exportStockReport = () => {
-    const rows = stockData.items.map((i) => ({
-      "Product Name": i.name,
-      SKU: i.sku,
-      Category: i.category,
-      "Units Available": i.stockQuantity,
-      "Cost Price": i.purchasePrice,
-      "Selling Price": i.sellingPrice,
-      "Total Cost Valuation": i.costValue,
-      "Potential Retail Value": i.retailValue,
-      "Profit Margin": i.margin,
+  const handleExportStock = () => {
+    const rows = stockValuationData.products.map((p) => ({
+      SKU: p.sku,
+      "Product Name": p.name,
+      Category: p.category,
+      "Stock Units": p.stockQuantity,
+      "Purchase Price": p.purchasePrice,
+      "Selling Price": p.sellingPrice,
+      "Total Cost Value": p.purchasePrice * p.stockQuantity,
+      "Total Retail Value": p.sellingPrice * p.stockQuantity,
+      "Margin %": Math.round(((p.sellingPrice - p.purchasePrice) / p.sellingPrice) * 100),
     }));
-    exportToCSV("Stockwell_Inventory_Valuation_Report", rows);
+    exportToCSV(`Stock_Valuation_Report`, rows);
   };
 
   return (
@@ -206,462 +167,373 @@ export default function ReportsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-3 border-b border-[#E9E2D8]">
         <div>
           <h1 className="text-[32px] sm:text-[34px] font-bold text-[#30251F] tracking-tight leading-tight">
-            Business Reports
+            Reports & Analytics
           </h1>
           <p className="text-sm sm:text-base text-[#918477] mt-1">
-            Analyze sales performance, supplier procurement, and warehouse inventory valuation.
+            Financial analytics, sales revenues, procurement spending, and inventory valuation.
           </p>
         </div>
 
-        {/* Global Date Filter */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center p-1 rounded-xl bg-[#F0EBE2] border border-[#E9E2D8] text-sm">
-            <button
-              onClick={() => setDateFilter("7days")}
-              className={`px-3.5 py-2 rounded-lg font-medium transition-all text-sm ${
-                dateFilter === "7days"
-                  ? "bg-white text-[#593A2C] shadow-xs font-semibold"
-                  : "text-[#765440] hover:text-[#30251F]"
-              }`}
-            >
-              7 Days
-            </button>
-            <button
-              onClick={() => setDateFilter("30days")}
-              className={`px-3.5 py-2 rounded-lg font-medium transition-all text-sm ${
-                dateFilter === "30days"
-                  ? "bg-white text-[#593A2C] shadow-xs font-semibold"
-                  : "text-[#765440] hover:text-[#30251F]"
-              }`}
-            >
-              30 Days
-            </button>
-            <button
-              onClick={() => setDateFilter("90days")}
-              className={`px-3.5 py-2 rounded-lg font-medium transition-all text-sm ${
-                dateFilter === "90days"
-                  ? "bg-white text-[#593A2C] shadow-xs font-semibold"
-                  : "text-[#765440] hover:text-[#30251F]"
-              }`}
-            >
-              90 Days
-            </button>
-            <button
-              onClick={() => setDateFilter("all")}
-              className={`px-3.5 py-2 rounded-lg font-medium transition-all text-sm ${
-                dateFilter === "all"
-                  ? "bg-white text-[#593A2C] shadow-xs font-semibold"
-                  : "text-[#765440] hover:text-[#30251F]"
-              }`}
-            >
-              All Time
-            </button>
-          </div>
+        {/* Date Filter Pills */}
+        <div className="flex items-center p-1 rounded-xl bg-[#F0EBE2] border border-[#E9E2D8] text-sm self-start sm:self-auto">
+          <button
+            onClick={() => setDateFilter("7days")}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-all text-xs sm:text-sm ${
+              dateFilter === "7days"
+                ? "bg-white text-[#593A2C] shadow-xs font-semibold"
+                : "text-[#765440] hover:text-[#30251F]"
+            }`}
+          >
+            Last 7d
+          </button>
+          <button
+            onClick={() => setDateFilter("30days")}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-all text-xs sm:text-sm ${
+              dateFilter === "30days"
+                ? "bg-white text-[#593A2C] shadow-xs font-semibold"
+                : "text-[#765440] hover:text-[#30251F]"
+            }`}
+          >
+            Last 30d
+          </button>
+          <button
+            onClick={() => setDateFilter("90days")}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-all text-xs sm:text-sm ${
+              dateFilter === "90days"
+                ? "bg-white text-[#593A2C] shadow-xs font-semibold"
+                : "text-[#765440] hover:text-[#30251F]"
+            }`}
+          >
+            Last 90d
+          </button>
+          <button
+            onClick={() => setDateFilter("all")}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-all text-xs sm:text-sm ${
+              dateFilter === "all"
+                ? "bg-white text-[#593A2C] shadow-xs font-semibold"
+                : "text-[#765440] hover:text-[#30251F]"
+            }`}
+          >
+            All Time
+          </button>
         </div>
       </div>
 
-      {/* THREE REPORT CATEGORY TABS */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-[#E9E2D8] pb-1">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab("sales")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === "sales"
-                ? "bg-[#593A2C] text-white shadow-xs"
-                : "text-[#765440] hover:text-[#30251F] hover:bg-[#F0EBE2]"
-            }`}
-          >
-            <ShoppingCart className="w-4 h-4" />
-            <span>Sales Report</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("purchases")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === "purchases"
-                ? "bg-[#593A2C] text-white shadow-xs"
-                : "text-[#765440] hover:text-[#30251F] hover:bg-[#F0EBE2]"
-            }`}
-          >
-            <Truck className="w-4 h-4" />
-            <span>Purchase Report</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("stock")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              activeTab === "stock"
-                ? "bg-[#593A2C] text-white shadow-xs"
-                : "text-[#765440] hover:text-[#30251F] hover:bg-[#F0EBE2]"
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Stock Valuation Report</span>
-          </button>
-        </div>
-
-        {/* CSV Export Button for active tab */}
+      {/* Report Categories Tab Navigation */}
+      <div className="flex items-center gap-2 border-b border-[#E9E2D8] pb-1 text-sm font-semibold">
         <button
-          onClick={
+          onClick={() => setActiveTab("sales")}
+          className={`px-4 py-2 rounded-t-xl transition-all ${
             activeTab === "sales"
-              ? exportSalesReport
-              : activeTab === "purchases"
-              ? exportPurchasesReport
-              : exportStockReport
-          }
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#E9E2D8] bg-white hover:bg-[#FAF8F5] text-sm font-semibold text-[#593A2C] shadow-xs transition-colors self-end sm:self-auto"
+              ? "bg-white text-[#593A2C] border-t border-x border-[#E9E2D8] -mb-px font-bold"
+              : "text-[#765440] hover:text-[#30251F]"
+          }`}
         >
-          <Download className="w-4 h-4" />
-          <span>Export CSV Report</span>
+          Sales Report
+        </button>
+        <button
+          onClick={() => setActiveTab("purchases")}
+          className={`px-4 py-2 rounded-t-xl transition-all ${
+            activeTab === "purchases"
+              ? "bg-white text-[#593A2C] border-t border-x border-[#E9E2D8] -mb-px font-bold"
+              : "text-[#765440] hover:text-[#30251F]"
+          }`}
+        >
+          Purchase Report
+        </button>
+        <button
+          onClick={() => setActiveTab("stock")}
+          className={`px-4 py-2 rounded-t-xl transition-all ${
+            activeTab === "stock"
+              ? "bg-white text-[#593A2C] border-t border-x border-[#E9E2D8] -mb-px font-bold"
+              : "text-[#765440] hover:text-[#30251F]"
+          }`}
+        >
+          Stock Valuation Report
         </button>
       </div>
 
-      {/* ============================================================== */}
-      {/* TAB A: SALES REPORT */}
-      {/* ============================================================== */}
+      {/* A. SALES REPORT */}
       {activeTab === "sales" && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Total Revenue"
               value={formatCurrency(salesData.totalRevenue, settings.currency)}
-              subtitle="Completed customer orders"
+              subtitle="From completed sales"
               icon={TrendingUp}
+              highlight
             />
             <MetricCard
-              title="Number of Sales"
+              title="Total Orders"
               value={salesData.totalCount}
-              subtitle="Total transactions recorded"
-              icon={ShoppingCart}
+              subtitle="Issued in period"
+              icon={BarChart3}
             />
             <MetricCard
               title="Completed Orders"
               value={salesData.completedCount}
-              subtitle="Stock deducted & fulfilled"
+              subtitle="Fulfilled & deducted"
               icon={TrendingUp}
-              trend={{ value: `${salesData.completedCount} fulfilled`, isPositive: true }}
             />
             <MetricCard
               title="Pending Orders"
               value={salesData.pendingCount}
               subtitle="Awaiting fulfillment"
               icon={Calendar}
-              trend={{ value: `${salesData.pendingCount} pending`, isPositive: false }}
             />
           </div>
 
-          {/* Sales Trend Chart */}
-          <div className="p-5 rounded-2xl bg-white border border-[#E9E2D8] shadow-sm">
-            <h3 className="text-sm font-semibold text-[#30251F] mb-1">Sales Trend</h3>
-            <p className="text-xs text-[#918477] mb-4">Revenue over time for selected period</p>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={salesData.chartTrend}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="salesTrendGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#593A2C" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#593A2C" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E9E2D8" />
-                  <XAxis
-                    dataKey="date"
-                    tickLine={false}
-                    axisLine={{ stroke: "#E9E2D8" }}
-                    tick={{ fill: "#918477", fontSize: 11 }}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={{ stroke: "#E9E2D8" }}
-                    tick={{ fill: "#918477", fontSize: 11 }}
-                    tickFormatter={(v) => `₹${v > 999 ? `${v / 1000}k` : v}`}
-                  />
-                  <Tooltip
-                    formatter={(val: number) => [
-                      formatCurrency(val, settings.currency),
-                      "Revenue",
-                    ]}
-                    contentStyle={{
-                      backgroundColor: "#FFFFFF",
-                      borderColor: "#E9E2D8",
-                      borderRadius: "12px",
-                      fontSize: "12px",
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#593A2C"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#salesTrendGrad)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+          {/* Revenue Trend Chart */}
+          <Card className="space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E9E2D8]">
+              <div>
+                <h3 className="text-base font-bold text-[#30251F]">Sales Revenue Trend</h3>
+                <p className="text-xs text-[#918477]">Gross sales velocity over time</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleExportSales}>
+                <Download className="w-3.5 h-3.5 mr-1" />
+                <span>Export CSV</span>
+              </Button>
             </div>
-          </div>
 
-          {/* Recent Sales Table */}
-          <div className="rounded-2xl border border-[#E9E2D8] bg-white shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-[#E9E2D8] bg-[#FAF8F5]">
-              <h3 className="text-xs font-semibold text-[#30251F]">Sales Orders Details</h3>
+            <div className="h-64 w-full">
+              {salesData.chartTrend.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-[#918477] text-sm">
+                  No completed sales in this date range
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={salesData.chartTrend}>
+                    <defs>
+                      <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#593A2C" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#593A2C" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E9E2D8" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      stroke="#918477"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke="#918477"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `₹${v.toLocaleString()}`}
+                    />
+                    <Tooltip
+                      formatter={(v: number) => [
+                        formatCurrency(v, settings.currency),
+                        "Completed Revenue",
+                      ]}
+                      contentStyle={{
+                        backgroundColor: "#FFFFFF",
+                        border: "1px solid #E9E2D8",
+                        borderRadius: "12px",
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#593A2C"
+                      strokeWidth={2.5}
+                      fillOpacity={1}
+                      fill="url(#salesGrad)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-[#FAF8F5] border-b border-[#E9E2D8] text-[11px] text-[#918477]">
-                    <th className="py-2.5 px-4 font-semibold">Order ID</th>
-                    <th className="py-2.5 px-4 font-semibold">Customer</th>
-                    <th className="py-2.5 px-4 font-semibold">Date</th>
-                    <th className="py-2.5 px-4 font-semibold">Order Status</th>
-                    <th className="py-2.5 px-4 font-semibold">Payment Status</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Total Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E9E2D8]">
-                  {salesData.orders.map((o) => (
-                    <tr key={o.id} className="hover:bg-[#FAF8F5] transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-[#593A2C]">{o.id}</td>
-                      <td className="py-3 px-4 font-medium text-[#30251F]">{o.customerName}</td>
-                      <td className="py-3 px-4 text-[#765440]">{formatDate(o.orderDate)}</td>
-                      <td className="py-3 px-4">
-                        <Badge variant={o.orderStatus} size="sm">
-                          {o.orderStatus.toUpperCase()}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge variant={o.paymentStatus} size="sm">
-                          {o.paymentStatus.toUpperCase()}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-[#30251F]">
-                        {formatCurrency(o.totalAmount, settings.currency)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          </Card>
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* TAB B: PURCHASE REPORT */}
-      {/* ============================================================== */}
+      {/* B. PURCHASE REPORT */}
       {activeTab === "purchases" && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
-              title="Total Purchase Value"
+              title="Procurement Spend"
               value={formatCurrency(purchaseData.totalSpend, settings.currency)}
-              subtitle="Received supplier inventory"
-              icon={Truck}
+              subtitle="Received merchandise"
+              icon={TrendingUp}
+              highlight
             />
             <MetricCard
-              title="Total POs Issued"
+              title="Purchase Orders"
               value={purchaseData.totalCount}
-              subtitle="Procurement orders"
-              icon={FileSpreadsheet}
+              subtitle="Total POs issued"
+              icon={BarChart3}
             />
             <MetricCard
               title="Received Orders"
               value={purchaseData.receivedCount}
-              subtitle="Goods delivered to warehouse"
-              icon={Truck}
-              trend={{ value: `${purchaseData.receivedCount} received`, isPositive: true }}
+              subtitle="Added to inventory"
+              icon={TrendingUp}
             />
             <MetricCard
-              title="Pending Inbound"
+              title="Pending Shipments"
               value={purchaseData.pendingCount}
-              subtitle="Orders in transit or ordered"
+              subtitle="In transit / ordered"
               icon={Calendar}
             />
           </div>
 
-          {/* Purchase Trend Bar Chart */}
-          <div className="p-5 rounded-2xl bg-white border border-[#E9E2D8] shadow-sm">
-            <h3 className="text-sm font-semibold text-[#30251F] mb-1">Procurement Spending</h3>
-            <p className="text-xs text-[#918477] mb-4">Capital allocated to restocking</p>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={purchaseData.chartTrend}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E9E2D8" />
-                  <XAxis
-                    dataKey="date"
-                    tickLine={false}
-                    axisLine={{ stroke: "#E9E2D8" }}
-                    tick={{ fill: "#918477", fontSize: 11 }}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={{ stroke: "#E9E2D8" }}
-                    tick={{ fill: "#918477", fontSize: 11 }}
-                    tickFormatter={(v) => `₹${v > 999 ? `${v / 1000}k` : v}`}
-                  />
-                  <Tooltip
-                    formatter={(val: number) => [
-                      formatCurrency(val, settings.currency),
-                      "Procurement Spend",
-                    ]}
-                    contentStyle={{
-                      backgroundColor: "#FFFFFF",
-                      borderColor: "#E9E2D8",
-                      borderRadius: "12px",
-                      fontSize: "12px",
-                    }}
-                  />
-                  <Bar dataKey="spend" fill="#765440" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          <Card className="space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E9E2D8]">
+              <div>
+                <h3 className="text-base font-bold text-[#30251F]">Procurement Spending Trend</h3>
+                <p className="text-xs text-[#918477]">Supplier spend distribution</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleExportPurchases}>
+                <Download className="w-3.5 h-3.5 mr-1" />
+                <span>Export CSV</span>
+              </Button>
             </div>
-          </div>
 
-          {/* Purchases Table */}
-          <div className="rounded-2xl border border-[#E9E2D8] bg-white shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-[#E9E2D8] bg-[#FAF8F5]">
-              <h3 className="text-xs font-semibold text-[#30251F]">Purchase Orders Log</h3>
+            <div className="h-64 w-full">
+              {purchaseData.chartTrend.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-[#918477] text-sm">
+                  No purchases recorded in this date range
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={purchaseData.chartTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E9E2D8" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      stroke="#918477"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke="#918477"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `₹${v.toLocaleString()}`}
+                    />
+                    <Tooltip
+                      formatter={(v: number) => [
+                        formatCurrency(v, settings.currency),
+                        "Procurement Spend",
+                      ]}
+                      contentStyle={{
+                        backgroundColor: "#FFFFFF",
+                        border: "1px solid #E9E2D8",
+                        borderRadius: "12px",
+                      }}
+                    />
+                    <Bar dataKey="spend" fill="#765440" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-[#FAF8F5] border-b border-[#E9E2D8] text-[11px] text-[#918477]">
-                    <th className="py-2.5 px-4 font-semibold">PO Number</th>
-                    <th className="py-2.5 px-4 font-semibold">Supplier</th>
-                    <th className="py-2.5 px-4 font-semibold">Order Date</th>
-                    <th className="py-2.5 px-4 font-semibold">Expected Delivery</th>
-                    <th className="py-2.5 px-4 font-semibold">Status</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E9E2D8]">
-                  {purchaseData.orders.map((p) => (
-                    <tr key={p.id} className="hover:bg-[#FAF8F5] transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-[#593A2C]">{p.id}</td>
-                      <td className="py-3 px-4 font-medium text-[#30251F]">{p.supplierName}</td>
-                      <td className="py-3 px-4 text-[#765440]">{formatDate(p.orderDate)}</td>
-                      <td className="py-3 px-4 text-[#918477]">
-                        {formatDate(p.expectedDelivery)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge variant={p.status} size="sm">
-                          {p.status.toUpperCase()}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-[#30251F]">
-                        {formatCurrency(p.totalAmount, settings.currency)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          </Card>
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* TAB C: STOCK VALUATION REPORT */}
-      {/* ============================================================== */}
+      {/* C. STOCK VALUATION REPORT */}
       {activeTab === "stock" && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
-              title="Total Cost Value"
-              value={formatCurrency(stockData.totalCostValue, settings.currency)}
-              subtitle="Warehouse cost valuation"
-              icon={Layers}
+              title="Inventory Asset Value"
+              value={formatCurrency(stockValuationData.totalCost, settings.currency)}
+              subtitle="Wholesale asset cost"
+              icon={TrendingUp}
+              highlight
             />
             <MetricCard
               title="Potential Retail Value"
-              value={formatCurrency(stockData.totalRetailValue, settings.currency)}
-              subtitle="At retail catalogue price"
+              value={formatCurrency(stockValuationData.totalRetail, settings.currency)}
+              subtitle="At current retail pricing"
               icon={TrendingUp}
-              trend={{
-                value: `+${formatCurrency(
-                  stockData.totalRetailValue - stockData.totalCostValue,
-                  settings.currency
-                )} margin`,
-                isPositive: true,
-              }}
             />
             <MetricCard
-              title="Low Stock Products"
-              value={stockData.lowStockCount}
-              subtitle="Require immediate reorder"
-              icon={Calendar}
-              trend={{ value: `${stockData.lowStockCount} low`, isPositive: false }}
+              title="Unrealized Margin"
+              value={formatCurrency(stockValuationData.potentialMargin, settings.currency)}
+              subtitle="Potential gross profit"
+              icon={TrendingUp}
             />
             <MetricCard
-              title="Out of Stock Products"
-              value={stockData.outOfStockCount}
-              subtitle="Zero inventory remaining"
-              icon={Calendar}
-              highlight={stockData.outOfStockCount > 0}
+              title="Average Gross Margin"
+              value={`${stockValuationData.marginPercent}%`}
+              subtitle="Portfolio profitability"
+              icon={BarChart3}
             />
           </div>
 
-          {/* Product-wise Inventory Table */}
-          <div className="rounded-2xl border border-[#E9E2D8] bg-white shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-[#E9E2D8] bg-[#FAF8F5] flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-[#30251F]">
-                Product-wise Valuation Breakdown
-              </h3>
-              <span className="text-[11px] text-[#918477]">
-                Calculated dynamically from real inventory
-              </span>
+          <Card className="p-0 overflow-hidden">
+            <div className="p-4 border-b border-[#E9E2D8] flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-[#30251F]">Catalogue Valuation Matrix</h3>
+                <p className="text-xs text-[#918477]">Product-by-product margin and capital breakdown</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleExportStock}>
+                <Download className="w-3.5 h-3.5 mr-1" />
+                <span>Export CSV</span>
+              </Button>
             </div>
+
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-[#FAF8F5] border-b border-[#E9E2D8] text-[11px] text-[#918477]">
-                    <th className="py-2.5 px-4 font-semibold">Product Name</th>
-                    <th className="py-2.5 px-4 font-semibold">SKU</th>
-                    <th className="py-2.5 px-4 font-semibold">Category</th>
-                    <th className="py-2.5 px-4 font-semibold text-center">Available Units</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Unit Cost</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Selling Price</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Total Cost Value</th>
-                    <th className="py-2.5 px-4 font-semibold text-right">Potential Revenue</th>
-                    <th className="py-2.5 px-4 font-semibold text-center">Gross Margin</th>
+              <table className="w-full text-left text-sm">
+                <thead className="bg-[#FAF8F5] border-b border-[#E9E2D8] text-xs font-semibold text-[#765440] uppercase tracking-wider">
+                  <tr>
+                    <th className="py-3 px-4">Product & SKU</th>
+                    <th className="py-3 px-4 text-center">Available Units</th>
+                    <th className="py-3 px-4 text-right">Cost Price</th>
+                    <th className="py-3 px-4 text-right">Selling Price</th>
+                    <th className="py-3 px-4 text-right">Asset Cost</th>
+                    <th className="py-3 px-4 text-right">Retail Potential</th>
+                    <th className="py-3 px-4 text-right">Margin %</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E9E2D8]">
-                  {stockData.items.map((item) => (
-                    <tr key={item.id} className="hover:bg-[#FAF8F5] transition-colors">
-                      <td className="py-3 px-4 font-medium text-[#30251F]">{item.name}</td>
-                      <td className="py-3 px-4 font-mono font-medium text-[#765440]">{item.sku}</td>
-                      <td className="py-3 px-4 text-[#918477]">{item.category}</td>
-                      <td className="py-3 px-4 text-center font-bold text-[#30251F]">
-                        {item.stockQuantity}
-                      </td>
-                      <td className="py-3 px-4 text-right text-[#918477]">
-                        {formatCurrency(item.purchasePrice, settings.currency)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-medium text-[#30251F]">
-                        {formatCurrency(item.sellingPrice, settings.currency)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-[#593A2C]">
-                        {formatCurrency(item.costValue, settings.currency)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-[#2E6930]">
-                        {formatCurrency(item.retailValue, settings.currency)}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="px-2 py-0.5 rounded-full bg-[#EBF5ED] text-[#2E6930] font-semibold text-[11px]">
-                          {item.margin}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {stockValuationData.products.map((p) => {
+                    const costVal = p.purchasePrice * p.stockQuantity;
+                    const retailVal = p.sellingPrice * p.stockQuantity;
+                    const margin = Math.round(
+                      ((p.sellingPrice - p.purchasePrice) / p.sellingPrice) * 100
+                    );
+
+                    return (
+                      <tr key={p.id} className="hover:bg-[#FAF8F5]/50">
+                        <td className="py-3 px-4 font-semibold text-[#30251F]">
+                          <div>{p.name}</div>
+                          <div className="text-xs text-[#918477] font-mono">{p.sku}</div>
+                        </td>
+                        <td className="py-3 px-4 text-center font-bold text-[#30251F]">
+                          {p.stockQuantity}
+                        </td>
+                        <td className="py-3 px-4 text-right text-xs text-[#918477]">
+                          {formatCurrency(p.purchasePrice, settings.currency)}
+                        </td>
+                        <td className="py-3 px-4 text-right text-xs text-[#765440]">
+                          {formatCurrency(p.sellingPrice, settings.currency)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-medium text-[#765440] text-xs sm:text-sm">
+                          {formatCurrency(costVal, settings.currency)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-bold text-[#30251F] text-xs sm:text-sm">
+                          {formatCurrency(retailVal, settings.currency)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-bold text-xs sm:text-sm text-[#2E6930]">
+                          {margin}%
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

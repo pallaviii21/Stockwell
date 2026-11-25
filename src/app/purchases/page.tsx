@@ -1,50 +1,32 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import {
-  Truck,
-  Plus,
-  Search,
-  Eye,
-  Trash2,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  PackageCheck,
-} from "lucide-react";
+import React, { useState } from "react";
+import { Plus, Eye, Trash2 } from "lucide-react";
 import { useInventoryStore } from "@/store/useInventoryStore";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { Select } from "@/components/ui/Select";
 import { CreatePurchaseOrderModal } from "@/components/modals/CreatePurchaseOrderModal";
+import { usePurchasesList } from "@/hooks/usePurchasesList";
 import { toast } from "sonner";
 import { PurchaseOrder, PurchaseStatus } from "@/types";
+import { APP_STRINGS } from "@/constants/strings";
 
 export default function PurchasesPage() {
   const { purchaseOrders, settings, updatePurchaseOrder, deletePurchaseOrder } =
     useInventoryStore();
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { search, setSearch, statusFilter, setStatusFilter, filteredPOs } =
+    usePurchasesList(purchaseOrders);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [poToView, setPoToView] = useState<PurchaseOrder | null>(null);
   const [poToDelete, setPoToDelete] = useState<PurchaseOrder | null>(null);
-
-  // Filtered orders
-  const filteredPOs = useMemo(() => {
-    return purchaseOrders.filter((po) => {
-      const matchesSearch =
-        po.id.toLowerCase().includes(search.toLowerCase()) ||
-        po.supplierName.toLowerCase().includes(search.toLowerCase()) ||
-        po.items.some((item) => item.productName.toLowerCase().includes(search.toLowerCase()));
-
-      const matchesStatus = statusFilter === "all" || po.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [purchaseOrders, search, statusFilter]);
 
   const handleStatusChange = (poId: string, newStatus: PurchaseStatus) => {
     const res = updatePurchaseOrder(poId, { status: newStatus });
@@ -78,278 +60,241 @@ export default function PurchasesPage() {
             Manage suppliers, track incoming shipments, and restock warehouse inventory.
           </p>
         </div>
-        <button
+        <Button
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#593A2C] hover:bg-[#472E23] text-white text-sm sm:text-base font-semibold shadow-xs transition-colors self-start sm:self-auto"
+          size="lg"
+          className="self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>New Purchase Order</span>
-        </button>
+        </Button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="p-4 rounded-2xl bg-white border border-[#E9E2D8] shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-sm">
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-[#A78B73] absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by PO ID, Supplier, or item name..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] placeholder-[#918477] focus:border-[#593A2C] focus:bg-white outline-none transition-colors text-sm"
-          />
-        </div>
+      <Card className="p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-sm">
+        <SearchInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onClear={() => setSearch("")}
+          placeholder="Search by PO ID, Supplier, or item name..."
+          className="max-w-md"
+        />
 
-        {/* Status Filter */}
-        <div className="flex items-center gap-2 text-sm">
-          <select
+        <div className="w-44">
+          <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3.5 py-2 rounded-xl border border-[#E9E2D8] bg-[#FAF8F5] text-[#30251F] focus:border-[#593A2C] outline-none text-sm"
           >
             <option value="all">All Statuses</option>
-            <option value="received">Received (Stock Added)</option>
-            <option value="pending">Pending Delivery</option>
+            <option value="received">Received (In Stock)</option>
             <option value="ordered">Ordered</option>
+            <option value="pending">Pending</option>
             <option value="cancelled">Cancelled</option>
-          </select>
+          </Select>
         </div>
-      </div>
+      </Card>
 
-      {/* PO Table */}
-      <div className="rounded-2xl border border-[#E9E2D8] bg-white shadow-sm overflow-hidden">
+      {/* Purchase Orders Table */}
+      <Card className="p-0 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#FAF8F5] border-b border-[#E9E2D8] text-xs sm:text-sm text-[#918477]">
-                <th className="py-3 px-4 font-semibold">PO Number</th>
-                <th className="py-3 px-4 font-semibold">Supplier</th>
-                <th className="py-3 px-4 font-semibold">Order Date</th>
-                <th className="py-3 px-4 font-semibold">Expected Delivery</th>
-                <th className="py-3 px-4 font-semibold">Items</th>
-                <th className="py-3 px-4 font-semibold">Total Amount</th>
-                <th className="py-3 px-4 font-semibold">Status</th>
-                <th className="py-3 px-4 font-semibold text-right">Actions</th>
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[#FAF8F5] border-b border-[#E9E2D8] text-xs font-semibold text-[#765440] uppercase tracking-wider">
+              <tr>
+                <th className="py-3.5 px-4">PO Number</th>
+                <th className="py-3.5 px-4">Supplier</th>
+                <th className="py-3.5 px-4">Order Date</th>
+                <th className="py-3.5 px-4">Expected Delivery</th>
+                <th className="py-3.5 px-4 text-center">Items</th>
+                <th className="py-3.5 px-4 text-right">Total Amount</th>
+                <th className="py-3.5 px-4 text-center">Delivery Status</th>
+                <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E9E2D8] text-sm sm:text-base">
+            <tbody className="divide-y divide-[#E9E2D8]">
               {filteredPOs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-[#918477]">
-                    <Truck className="w-8 h-8 text-[#A78B73] mx-auto mb-2 opacity-50" />
-                    <p className="font-medium text-sm text-[#30251F]">No purchase orders found</p>
-                    <p className="text-xs mt-1">Issue a purchase order to record inbound supplier stock.</p>
+                  <td colSpan={8} className="text-center py-12 text-[#918477]">
+                    <p className="font-medium text-sm text-[#593A2C]">No purchase orders found</p>
+                    <p className="text-xs mt-1">Try adjusting search criteria or issue a new PO</p>
                   </td>
                 </tr>
               ) : (
-                filteredPOs.map((po) => {
-                  const itemCount = po.items.reduce((sum, item) => sum + item.quantity, 0);
-                  const itemsSummary = po.items
-                    .map((item) => `${item.productName} (x${item.quantity})`)
-                    .join(", ");
-
-                  return (
-                    <tr key={po.id} className="hover:bg-[#FAF8F5]/80 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-bold text-[#593A2C]">{po.id}</td>
-                      <td className="py-3.5 px-4 font-semibold text-[#30251F]">
-                        {po.supplierName}
-                      </td>
-                      <td className="py-3.5 px-4 text-[#765440]">{formatDate(po.orderDate)}</td>
-                      <td className="py-3.5 px-4 text-[#918477]">
-                        {formatDate(po.expectedDelivery)}
-                      </td>
-                      <td className="py-3.5 px-4 max-w-[220px]">
-                        <span className="text-[11px] font-medium text-[#30251F] block truncate">
-                          {itemsSummary}
-                        </span>
-                        <span className="text-[10px] text-[#918477]">
-                          {itemCount} units ordered across {po.items.length} line(s)
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-[#30251F] text-sm">
-                        {formatCurrency(po.totalAmount, settings.currency)}
-                      </td>
-                      <td className="py-3.5 px-4">
+                filteredPOs.map((po) => (
+                  <tr
+                    key={po.id}
+                    className="hover:bg-[#FAF8F5]/60 transition-colors group"
+                  >
+                    <td className="py-3.5 px-4 font-mono font-bold text-[#30251F]">
+                      {po.id}
+                    </td>
+                    <td className="py-3.5 px-4 font-semibold text-[#30251F]">
+                      {po.supplierName}
+                    </td>
+                    <td className="py-3.5 px-4 text-xs sm:text-sm text-[#765440]">
+                      {formatDate(po.orderDate)}
+                    </td>
+                    <td className="py-3.5 px-4 text-xs sm:text-sm text-[#765440]">
+                      {formatDate(po.expectedDelivery)}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className="font-medium text-xs px-2 py-0.5 rounded-full bg-[#F0EBE2] text-[#593A2C]">
+                        {po.items.length} items
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right font-bold text-[#30251F] text-xs sm:text-sm">
+                      {formatCurrency(po.totalAmount, settings.currency)}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="inline-block relative">
                         <select
                           value={po.status}
                           onChange={(e) =>
                             handleStatusChange(po.id, e.target.value as PurchaseStatus)
                           }
-                          className={`px-2 py-0.5 rounded-lg border text-xs font-semibold cursor-pointer ${
-                            po.status === "received"
-                              ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-                              : po.status === "pending"
-                              ? "bg-amber-50 border-amber-300 text-amber-800"
-                              : po.status === "ordered"
-                              ? "bg-blue-50 border-blue-300 text-blue-800"
-                              : "bg-red-50 border-red-300 text-red-700"
-                          }`}
+                          className="appearance-none cursor-pointer bg-transparent outline-none text-center"
                         >
-                          <option value="received">Received (In Stock)</option>
-                          <option value="pending">Pending Delivery</option>
+                          <option value="received">Received</option>
                           <option value="ordered">Ordered</option>
+                          <option value="pending">Pending</option>
                           <option value="cancelled">Cancelled</option>
                         </select>
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => setPoToView(po)}
-                            className="p-1.5 text-[#918477] hover:text-[#593A2C] hover:bg-[#F0EBE2] rounded-lg transition-colors"
-                            title="View PO Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setPoToDelete(po)}
-                            className="p-1.5 text-[#918477] hover:text-[#B91C1C] hover:bg-[#FEE2E2] rounded-lg transition-colors"
-                            title="Delete PO"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                        <Badge variant={po.status} size="sm">
+                          {po.status}
+                        </Badge>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setPoToView(po)}
+                          title="View PO Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setPoToDelete(po)}
+                          title="Delete PO"
+                          className="hover:text-[#B91C1C]"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
+      </Card>
 
-        {/* Footer */}
-        <div className="px-4 py-3 bg-[#FAF8F5] border-t border-[#E9E2D8] flex items-center justify-between text-xs text-[#918477]">
-          <span>
-            Total: <strong>{filteredPOs.length}</strong> purchase orders (
-            <strong>
-              {formatCurrency(
-                filteredPOs.reduce((sum, p) => sum + p.totalAmount, 0),
-                settings.currency
-              )}
-            </strong>{" "}
-            total procurement value)
-          </span>
-          <span className="font-mono text-[11px]">Real-time inventory replenishment</span>
-        </div>
-      </div>
-
-      {/* VIEW PO DETAILS MODAL */}
-      {poToView && (
-        <Modal
-          isOpen={Boolean(poToView)}
-          onClose={() => setPoToView(null)}
-          title={`Purchase Order — ${poToView.id}`}
-          subtitle={`Supplier: ${poToView.supplierName} • Ordered: ${formatDate(
-            poToView.orderDate
-          )}`}
-          maxWidth="2xl"
-        >
-          <div className="space-y-4 text-xs">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-[#FAF8F5] border border-[#E9E2D8]">
-              <div>
-                <span className="text-[#918477] block text-[11px]">Supplier</span>
-                <span className="font-semibold text-[#30251F]">{poToView.supplierName}</span>
-              </div>
-              <div>
-                <span className="text-[#918477] block text-[11px]">Expected Delivery</span>
-                <span className="font-medium text-[#765440]">
-                  {formatDate(poToView.expectedDelivery)}
-                </span>
-              </div>
-              <div>
-                <span className="text-[#918477] block text-[11px]">Status</span>
-                <Badge variant={poToView.status} size="sm">
-                  {poToView.status.toUpperCase()}
-                </Badge>
-              </div>
-              <div>
-                <span className="text-[#918477] block text-[11px]">Warehouse Units</span>
-                <span
-                  className={`font-semibold ${
-                    poToView.inventoryAdded ? "text-emerald-700" : "text-amber-700"
-                  }`}
-                >
-                  {poToView.inventoryAdded ? "Stock Received" : "Awaiting Goods"}
-                </span>
-              </div>
-            </div>
-
-            {/* Items Table */}
-            <div className="border border-[#E9E2D8] rounded-xl overflow-hidden bg-white">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-[#FAF8F5] border-b border-[#E9E2D8] text-[11px] text-[#918477]">
-                    <th className="p-3 font-semibold">Item & SKU</th>
-                    <th className="p-3 font-semibold text-center">Quantity</th>
-                    <th className="p-3 font-semibold text-right">Unit Cost</th>
-                    <th className="p-3 font-semibold text-right">Line Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E9E2D8]">
-                  {poToView.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="p-3 font-medium text-[#30251F]">
-                        <span>{item.productName}</span>
-                        <span className="text-[10px] font-mono text-[#918477] block">
-                          SKU: {item.sku}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center font-bold text-[#765440]">{item.quantity}</td>
-                      <td className="p-3 text-right text-[#918477]">
-                        {formatCurrency(item.unitCost, settings.currency)}
-                      </td>
-                      <td className="p-3 text-right font-bold text-[#30251F]">
-                        {formatCurrency(item.total, settings.currency)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E9E2D8] flex items-center justify-between">
-              <div>
-                <span className="text-[11px] text-[#918477] block">Procurement Notes:</span>
-                <p className="text-[#30251F] text-xs">
-                  {poToView.notes || "Standard procurement batch."}
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="text-xs text-[#918477] block">Total PO Value</span>
-                <span className="text-xl font-bold text-[#593A2C]">
-                  {formatCurrency(poToView.totalAmount, settings.currency)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => setPoToView(null)}
-                className="px-4 py-2 rounded-xl bg-[#593A2C] text-white font-medium hover:bg-[#472E23] transition-colors"
-              >
-                Close View
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* CREATE PO MODAL */}
+      {/* Create Purchase Order Modal */}
       <CreatePurchaseOrderModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
       />
 
-      {/* CONFIRM DELETE DIALOG */}
+      {/* View PO Details Modal */}
+      {poToView && (
+        <Modal
+          isOpen={Boolean(poToView)}
+          onClose={() => setPoToView(null)}
+          title={`Purchase Order — ${poToView.id}`}
+          subtitle={`Issued to ${poToView.supplierName} • Ordered on ${formatDate(poToView.orderDate)}`}
+          maxWidth="2xl"
+        >
+          <div className="space-y-5 text-sm">
+            <div className="flex items-center justify-between p-4 rounded-xl bg-[#FAF8F5] border border-[#E9E2D8]">
+              <div>
+                <span className="text-xs text-[#918477]">Delivery Status</span>
+                <div className="mt-1">
+                  <Badge variant={poToView.status}>{poToView.status}</Badge>
+                </div>
+              </div>
+              <div>
+                <span className="text-xs text-[#918477]">Expected Delivery</span>
+                <p className="text-sm font-semibold text-[#30251F] mt-1">
+                  {formatDate(poToView.expectedDelivery)}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-[#918477]">Total Procurement Value</span>
+                <div className="text-xl font-bold text-[#30251F] mt-0.5">
+                  {formatCurrency(poToView.totalAmount, settings.currency)}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-xs font-semibold text-[#593A2C] mb-2 block">
+                Ordered Products ({poToView.items.length})
+              </span>
+              <div className="rounded-xl border border-[#E9E2D8] overflow-hidden bg-white">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-[#FAF8F5] text-xs font-semibold text-[#765440] border-b border-[#E9E2D8]">
+                    <tr>
+                      <th className="p-3">Product Name</th>
+                      <th className="p-3 text-center">SKU</th>
+                      <th className="p-3 text-center">Units Ordered</th>
+                      <th className="p-3 text-right">Unit Cost</th>
+                      <th className="p-3 text-right">Line Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E9E2D8]">
+                    {poToView.items.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="p-3 font-medium text-[#30251F]">{item.productName}</td>
+                        <td className="p-3 text-center font-mono text-xs text-[#918477]">
+                          {item.sku}
+                        </td>
+                        <td className="p-3 text-center font-semibold text-[#30251F]">
+                          {item.quantity}
+                        </td>
+                        <td className="p-3 text-right text-[#765440]">
+                          {formatCurrency(item.unitCost, settings.currency)}
+                        </td>
+                        <td className="p-3 text-right font-bold text-[#30251F]">
+                          {formatCurrency(item.total, settings.currency)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {poToView.notes && (
+              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E9E2D8]">
+                <span className="text-xs font-semibold text-[#593A2C]">Procurement Notes:</span>
+                <p className="text-xs text-[#765440] mt-0.5">{poToView.notes}</p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-4 border-t border-[#E9E2D8]">
+              <span className="text-xs text-[#918477]">
+                Stock Added: {poToView.inventoryAdded ? "Yes (Units in warehouse)" : "Pending receipt"}
+              </span>
+              <Button variant="secondary" onClick={() => setPoToView(null)}>
+                {APP_STRINGS.COMMON.CLOSE}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={Boolean(poToDelete)}
         onClose={() => setPoToDelete(null)}
         onConfirm={handleDeleteConfirm}
         title="Delete Purchase Order"
-        message={`Are you sure you want to delete purchase order "${poToDelete?.id}" from ${poToDelete?.supplierName}? If received, the added stock will be subtracted from inventory.`}
+        message={`Are you sure you want to delete purchase order ${poToDelete?.id}? This action will permanently remove the PO record.`}
         confirmText="Delete PO"
-        isDestructive={true}
+        isDestructive
       />
     </div>
   );

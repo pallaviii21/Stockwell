@@ -1,18 +1,23 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Bell, AlertTriangle, ArrowUpRight, CheckCircle2, Package } from "lucide-react";
 import { useInventoryStore } from "@/store/useInventoryStore";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import Link from "next/link";
 
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { products, activities, settings } = useInventoryStore();
+  const { products, activities } = useInventoryStore();
 
-  const lowStockItems = products.filter((p) => p.stockQuantity <= p.minStockLevel);
-  const recentActivities = activities.slice(0, 5);
+  const lowStockItems = useMemo(() => {
+    return products.filter((p) => p.stockQuantity <= p.minStockLevel);
+  }, [products]);
+
+  const recentActivities = useMemo(() => {
+    return activities.slice(0, 5);
+  }, [activities]);
 
   const totalNotifications = lowStockItems.length + Math.min(recentActivities.length, 3);
 

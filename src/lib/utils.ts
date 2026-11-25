@@ -63,10 +63,12 @@ export function getStockStatusLabel(status: StockStatus): string {
   }
 }
 
-export function exportToCSV(filename: string, rows: Record<string, any>[]) {
+export function exportToCSV<T extends Record<string, unknown>>(filename: string, rows: T[]) {
   if (!rows || !rows.length) return;
   const separator = ",";
-  const keys = Object.keys(rows[0]);
+  const firstRow = rows[0];
+  if (!firstRow) return;
+  const keys = Object.keys(firstRow) as (keyof T)[];
   const csvContent =
     keys.join(separator) +
     "\n" +
@@ -74,7 +76,8 @@ export function exportToCSV(filename: string, rows: Record<string, any>[]) {
       .map((row) => {
         return keys
           .map((k) => {
-            let cell = row[k] === null || row[k] === undefined ? "" : String(row[k]);
+            const val = row[k];
+            let cell = val === null || val === undefined ? "" : String(val);
             cell = cell.replace(/"/g, '""');
             if (cell.search(/("|,|\n)/g) >= 0) {
               cell = `"${cell}"`;

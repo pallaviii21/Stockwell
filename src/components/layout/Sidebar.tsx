@@ -3,102 +3,18 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  Truck,
-  Layers,
-  BarChart3,
-  Users,
-  Building2,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NAVIGATION_SECTIONS } from "@/constants/navigation";
+import { APP_STRINGS } from "@/constants/strings";
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
+export const Sidebar: React.FC<SidebarProps> = React.memo(({ collapsed, onToggle }) => {
   const pathname = usePathname();
-
-  const navigationSections = [
-    {
-      title: "WORKSPACE",
-      items: [
-        {
-          name: "Dashboard",
-          href: "/",
-          icon: LayoutDashboard,
-        },
-      ],
-    },
-    {
-      title: "OPERATIONS",
-      items: [
-        {
-          name: "Products",
-          href: "/products",
-          icon: Package,
-        },
-        {
-          name: "Sales",
-          href: "/sales",
-          icon: ShoppingCart,
-        },
-        {
-          name: "Purchases",
-          href: "/purchases",
-          icon: Truck,
-        },
-        {
-          name: "Stock",
-          href: "/stock",
-          icon: Layers,
-        },
-      ],
-    },
-    {
-      title: "ANALYTICS",
-      items: [
-        {
-          name: "Reports",
-          href: "/reports",
-          icon: BarChart3,
-        },
-      ],
-    },
-    {
-      title: "MANAGEMENT",
-      items: [
-        {
-          name: "Customers",
-          href: "/customers",
-          icon: Users,
-        },
-        {
-          name: "Suppliers",
-          href: "/suppliers",
-          icon: Building2,
-        },
-      ],
-    },
-    {
-      title: "PREFERENCES",
-      items: [
-        {
-          name: "Settings",
-          href: "/settings",
-          icon: Settings,
-        },
-      ],
-    },
-  ];
 
   return (
     <aside
@@ -145,10 +61,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
           {!collapsed && (
             <div className="flex flex-col">
               <span className="text-sm font-bold tracking-wider text-[#30251F] uppercase font-mono">
-                STOCKWELL
+                {APP_STRINGS.BRAND.NAME}
               </span>
               <span className="text-[10px] text-[#918477] tracking-tight -mt-0.5">
-                Inventory OS
+                {APP_STRINGS.BRAND.SUBTITLE}
               </span>
             </div>
           )}
@@ -166,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
 
       {/* Navigation Sections */}
       <div className="flex-1 overflow-y-auto py-4 px-2 space-y-6">
-        {navigationSections.map((section, idx) => (
+        {NAVIGATION_SECTIONS.map((section, idx) => (
           <div key={idx} className="space-y-1">
             {!collapsed && (
               <div className="px-3 py-1 text-xs font-bold tracking-wider text-[#A78B73] uppercase">
@@ -217,12 +133,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-[#30251F] truncate">Alex Morgan</p>
-              <p className="text-[10px] text-[#918477] truncate">Operations Lead</p>
+              <p className="text-xs font-semibold text-[#30251F] truncate">{APP_STRINGS.BRAND.USER_NAME}</p>
+              <p className="text-[10px] text-[#918477] truncate">{APP_STRINGS.BRAND.USER_ROLE}</p>
             </div>
           )}
         </div>
       </div>
     </aside>
   );
-};
+});
+
+Sidebar.displayName = "Sidebar";
